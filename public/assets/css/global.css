@@ -1,0 +1,134 @@
+
+html, body {
+  font-family: "Exo 2", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+  background-color: #1B1C1E; /* Add background color here */
+  color: #FFFFFF; /* Optional: Set default text color to white for better contrast */
+  overflow: hidden; /* Prevent any scrolling */
+  -ms-overflow-style: none; 
+  scrollbar-width: none;  
+}
+
+body::-webkit-scrollbar {
+  display: none; 
+}
+.element::-webkit-scrollbar {
+  display: none;
+}
+
+/* Transition Animations */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.2s;
+}
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translate(50px, 0);
+}
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translate(-50px, 0);
+}
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translate(-50px, 0);
+}
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translate(50px, 0);
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active,
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.2s ease;
+}
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translate(0px, 50px) scale(0.9); /* Добавлено уменьшение при входе */
+}
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translate(0px, -50px) scale(0.9); /* Добавлено уменьшение при уходе */
+}
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translate(0px, -50px) scale(0.9); /* Добавлено уменьшение при входе */
+}
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translate(0px, 50px) scale(0.9); /* Добавлено уменьшение при уходе */
+}
+
+
+
+.page-enter-active,
+.page-leave-active {
+  transition: all 0.2s;
+}
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+
+}
+
+.input-wrappers {
+  height: 2rem;
+  background-color: #1B1C1E;
+  display: flex;
+  border-radius: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 50;
+  padding: 0.50rem;
+  z-index: 1;
+}
+
+.custom-inputs {
+  background-color: #1B1C1E;
+  width: 100%;
+  border: none;
+  outline: none;
+  flex: 1;
+
+}
+
+.fade-enter-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-enter-from {
+  opacity: 0;
+
+}
+.fade-leave-to {
+  opacity: 0;
+}
+
+
+@media (max-height: 600px) {
+  .responsive-height {
+    max-height: 100vh;
+  }
+}
+
+
+@media (min-height: 601px) {
+  .responsive-height {
+    max-height: calc(100vh - 144px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-height {
+    max-height: calc(100vh);
+  }
+}
