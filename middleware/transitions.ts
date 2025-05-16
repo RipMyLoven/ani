@@ -16,9 +16,11 @@ export default defineNuxtRouteMiddleware((to: RouteLocationNormalized, from: Rou
   const fromMeta = from.meta as PageMeta || {};
   const toMeta = to.meta as PageMeta || {};
 
+  // Проверяем, находимся ли мы в клиентском окружении
   const isClient = typeof window !== 'undefined';
   const isLargeScreen = isClient ? window.innerWidth > 1024 : false;
 
+  // Если ширина экрана больше 1024px, устанавливаем анимацию fade
   if (isLargeScreen) {
     fromMeta.pageTransition = {
       name: 'fade',

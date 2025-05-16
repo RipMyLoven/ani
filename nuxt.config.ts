@@ -1,6 +1,11 @@
 export default defineNuxtConfig({
   components: [
     { path: '~/components/UI' },
+    { path: '~/components/burgercomponents' },
+
+    { path: '~/pages/index/components' },
+    { path: '~/pages/login/components' },
+    { path: '~/pages/register/components' },
     '~/components' 
   ],
   build: {
