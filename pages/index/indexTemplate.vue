@@ -3,11 +3,11 @@
     <!-- Header -->
     <div class="p-4 border-b border-gray-800">
       <div class="flex items-center font-bold mb-3">
-        Messages <Square class="h-4 w-4 ml-1" />
+        Messages <IconSquare class="h-4 w-4 ml-1" />
       </div>
       <div class="flex gap-2">
         <div class="flex items-center bg-gray-800 rounded-full px-4 py-2 flex-grow">
-          <Search class="h-5 w-5 text-gray-400" />
+          <IconSearch class="h-5 w-5 text-gray-400" />
           <input 
             type="text" 
             placeholder="Search" 
@@ -24,7 +24,7 @@
     <div class="flex-grow overflow-y-auto">
       <div class="flex p-3 gap-3 border-b border-gray-800">
         <div class="w-10 h-10 rounded-full bg-blue-800 flex items-center justify-center flex-shrink-0">
-          <MessageSquare class="h-5 w-5" />
+          <IconMessageSquare class="h-5 w-5" />
         </div>
         <div class="flex-grow">
           <div class="flex justify-between mb-1">
@@ -39,7 +39,7 @@
 
       <div class="flex p-3 gap-3 border-b border-gray-800">
         <div class="w-10 h-10 rounded-full bg-pink-600 flex items-center justify-center flex-shrink-0">
-          <User class="h-5 w-5" />
+          <IconUser class="h-5 w-5" />
         </div>
         <div class="flex-grow">
           <div class="flex justify-between mb-1">
@@ -54,7 +54,7 @@
 
       <div class="flex p-3 gap-3 border-b border-gray-800">
         <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0">
-          <Heart class="h-5 w-5" />
+          <IconHeart class="h-5 w-5" />
         </div>
         <div class="flex-grow">
           <div class="flex justify-between mb-1">
@@ -69,7 +69,7 @@
 
       <div class="flex p-3 gap-3 border-b border-gray-800">
         <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-          <Zap class="h-5 w-5" />
+          <IconZap class="h-5 w-5" />
         </div>
         <div class="flex-grow">
           <div class="flex justify-between mb-1">
@@ -86,14 +86,14 @@
     <!-- Footer -->
     <div class="flex justify-around py-3 border-t border-gray-800">
       <button class="flex flex-col items-center text-gray-400">
-        <MessageCircle class="h-6 w-6" />
+        <IconMessageCircle class="h-6 w-6" />
       </button>
       <button class="flex flex-col items-center text-gray-400">
-        <Bell class="h-6 w-6" />
+        <IconBell class="h-6 w-6" />
       </button>
       <button class="flex flex-col items-center text-white">
         <div class="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center mb-1">
-          <User class="h-5 w-5" />
+          <IconUser class="h-5 w-5" />
         </div>
         <span class="text-xs">You</span>
       </button>
@@ -101,6 +101,5 @@
   </div>
 </template>
 
-<script setup>
-import { Square, Search, MessageSquare, User, Heart, Zap, MessageCircle, Bell } from 'lucide-vue-next'
+<script setup lang="ts">
 </script>

@@ -8,7 +8,10 @@ export default defineNuxtConfig({
   },
   modules: [
     '@nuxtjs/tailwindcss',
-    '@pinia/nuxt', 
+    '@pinia/nuxt',
+    ['nuxt-lucide-icons', {
+      namePrefix: 'Icon'
+    }]
   ],
 
   tailwindcss: {
