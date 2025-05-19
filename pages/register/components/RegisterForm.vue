@@ -51,8 +51,9 @@
     <button 
       type="submit" 
       class="w-full bg-[#222222] text-white py-3 rounded-md hover:bg-[#2a2a2a] transition-colors"
+      :disabled="isLoading"
     >
-      Register
+      {{ isLoading ? 'Registering...' : 'Register' }}
     </button>
   </form>
 </template>
@@ -60,7 +61,7 @@
 <script setup lang="ts">
 import { useRegisterLogic } from '../registerLogic';
 
-const { form, errors, handleSubmit } = useRegisterLogic();
+const { form, errors, handleSubmit, isLoading } = useRegisterLogic();
 </script>
 
 <style scoped>

@@ -14,11 +14,8 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
-    ['nuxt-lucide-icons', {
-      namePrefix: 'Icon'
-    }]
   ],
-
+  
   tailwindcss: {
     configPath: '~/tailwind.config.js',
     exposeConfig: true,

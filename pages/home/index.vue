@@ -44,8 +44,9 @@
 </template>
 
 <script setup>
-import { useAuthStore } from '~/stores/auth';
+import { useAuthStore } from '~/server/stores/auth';
 import { useRouter } from '#app';
+import { onMounted } from 'vue';
 
 definePageMeta({
   requiresAuth: true
@@ -53,6 +54,12 @@ definePageMeta({
 
 const authStore = useAuthStore();
 const router = useRouter();
+
+onMounted(async () => {
+  if (!authStore.user) {
+    await authStore.checkAuth();
+  }
+});
 
 const logout = async () => {
   await authStore.logout();

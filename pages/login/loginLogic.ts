@@ -1,13 +1,15 @@
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter } from '#app';
+import { useAuthStore } from '~/server/stores/auth';
+import type { User } from '~/server/stores/auth';
 
 interface LoginForm {
-  usernameOrEmail: string;
+  username: string;
   password: string;
 }
 
 interface FormErrors {
-  usernameOrEmail?: string;
+  username?: string;
   password?: string;
 }
 
@@ -15,26 +17,21 @@ export const useLoginLogic = () => {
   const router = useRouter();
   
   const form = reactive<LoginForm>({
-    usernameOrEmail: '',
+    username: '',
     password: '',
   });
   
   const errors = reactive<FormErrors>({});
   const isLoading = ref(false);
   
-  const validateEmail = (email: string): boolean => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
-  
   const validateForm = (): boolean => {
-    errors.usernameOrEmail = '';
+    errors.username = '';
     errors.password = '';
     
     let isValid = true;
     
-    if (!form.usernameOrEmail.trim()) {
-      errors.usernameOrEmail = 'Username or Email is required';
+    if (!form.username.trim()) {
+      errors.username = 'Username is required';
       isValid = false;
     }
     
@@ -52,28 +49,28 @@ export const useLoginLogic = () => {
   const loginUser = async () => {
     try {
       isLoading.value = true;
+      console.log("Attempting login...");
       
-      // Determine if input is email or username
-      const isEmail = validateEmail(form.usernameOrEmail);
+      const response = await $fetch<{user: User, ok: boolean}>('/api/auth/login', {
+        method: 'POST',
+        body: {
+          username: form.username,
+          password: form.password
+        }
+      });
       
-      // Here you would make your API call to login the user
-      // For example:
-      // const response = await $fetch('/api/login', {
-      //   method: 'POST',
-      //   body: {
-      //     [isEmail ? 'email' : 'username']: form.usernameOrEmail,
-      //     password: form.password
-      //   }
-      // });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redirect to home after successful login
-      router.push('/home');
-    } catch (error) {
-      console.error('Login error:', error);
-      // Handle specific API errors here
+      const authStore = useAuthStore();
+      if (response && response.user) {
+        authStore.setUser(response.user);
+        
+        window.location.href = '/home'; 
+      }
+    } catch (error: any) {
+      if (error.statusCode === 401) {
+        errors.username = 'Invalid username or password';
+      } else {
+        console.error('Login error:', error);
+      }
     } finally {
       isLoading.value = false;
     }

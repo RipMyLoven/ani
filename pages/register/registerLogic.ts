@@ -1,5 +1,7 @@
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter } from '#app';
+import { useAuthStore } from '~/server/stores/auth';
+import type { User } from '~/server/stores/auth';
 
 interface RegisterForm {
   username: string;
@@ -73,26 +75,41 @@ export const useRegisterLogic = () => {
   const registerUser = async () => {
     try {
       isLoading.value = true;
+      const response = await $fetch<{user: User, ok: boolean}>('/api/auth/register', {
+        method: 'POST',
+        body: {
+          username: form.username,
+          email: form.email,
+          password: form.password
+        }
+      });
       
-      // Here you would make your API call to register the user
-      // For example:
-      // const response = await $fetch('/api/register', {
-      //   method: 'POST',
-      //   body: {
-      //     username: form.username,
-      //     email: form.email,
-      //     password: form.password
-      //   }
-      // });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redirect to login or dashboard
-      router.push('/home');
-    } catch (error) {
+      const authStore = useAuthStore();
+      if (response && response.user) {
+        console.log("Setting user in store:", response.user);
+        authStore.setUser(response.user);
+        
+        setTimeout(() => {
+          console.log("Redirecting to home page");
+          router.push('/home');
+        }, 100);
+      } else {
+        console.error("No user data in response");
+      }
+    } catch (error: any) {
       console.error('Registration error:', error);
-      // Handle specific API errors here
+      
+      if (error.statusCode === 409) {
+        if (error.statusMessage?.includes('Email already')) {
+          errors.email = 'Email is already in use';
+        } else if (error.statusMessage?.includes('Username already')) {
+          errors.username = 'Username is already in use';
+        } else {
+          errors.username = 'User already exists';
+        }
+      } else {
+        alert('Registration failed: ' + (error.statusMessage || 'Unknown error'));
+      }
     } finally {
       isLoading.value = false;
     }

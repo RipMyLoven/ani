@@ -1,15 +1,15 @@
 <template>
   <form @submit.prevent="handleSubmit" class="w-full max-w-sm">
     <div class="mb-4">
-      <label for="usernameOrEmail" class="block text-gray-400 text-sm mb-1">Username or Email</label>
+      <label for="username" class="block text-gray-400 text-sm mb-1">Username</label>
       <input 
         type="text" 
-        id="usernameOrEmail" 
-        v-model="form.usernameOrEmail" 
+        id="username" 
+        v-model="form.username" 
         class="w-full bg-[#333333] text-white px-3 py-2 rounded-md focus:outline-none"
-        :class="{'border border-red-500': errors.usernameOrEmail}"
+        :class="{'border border-red-500': errors.username}"
       />
-      <p v-if="errors.usernameOrEmail" class="text-red-500 text-xs mt-1">{{ errors.usernameOrEmail }}</p>
+      <p v-if="errors.username" class="text-red-500 text-xs mt-1">{{ errors.username }}</p>
     </div>
     
     <div class="mb-4">

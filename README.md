@@ -1,28 +1,35 @@
-# Nuxt Minimal Starter
+# AniMessnager 
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A modern web application built with Nuxt 3, featuring a complete authentication system, user management, and SurrealDB integration.
 
-## Setup
+## Technologies
 
-Make sure to install dependencies:
+- **Frontend**: Nuxt 3, Vue 3, TailwindCSS
+- **Backend**: Nuxt API routes, SurrealDB
+- **Authentication**: Custom token-based auth with secure HTTP-only cookies
+- **State Management**: Pinia with persistence
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18 or newer)
+- [pnpm](https://pnpm.io/) package manager
+- [SurrealDB](https://surrealdb.com/) (for database)
+
+## Getting Started
+
+This project requires two terminal windows to run:
+
+### First Terminal - Database Server
+
+Start the SurrealDB database:
 
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
+surreal start --user admin --pass admin --bind 0.0.0.0:8000 rocksdb://server/db/data/
 ```
 
-## Development Server
+### Second Terminal - Nuxt Development Server
 
-Start the development server on `http://localhost:3000`:
+Start the Nuxt development server:
 
 ```bash
 # npm
