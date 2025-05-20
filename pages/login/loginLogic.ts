@@ -62,8 +62,7 @@ export const useLoginLogic = () => {
       const authStore = useAuthStore();
       if (response && response.user) {
         authStore.setUser(response.user);
-        
-        window.location.href = '/home'; 
+        router.push('/home');
       }
     } catch (error: any) {
       if (error.statusCode === 401) {

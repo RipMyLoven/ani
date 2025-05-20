@@ -86,13 +86,8 @@ export const useRegisterLogic = () => {
       
       const authStore = useAuthStore();
       if (response && response.user) {
-        console.log("Setting user in store:", response.user);
         authStore.setUser(response.user);
-        
-        setTimeout(() => {
-          console.log("Redirecting to home page");
-          router.push('/home');
-        }, 100);
+        router.push('/home');
       } else {
         console.error("No user data in response");
       }

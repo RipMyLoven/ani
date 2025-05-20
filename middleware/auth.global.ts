@@ -5,8 +5,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   
   const authStore = useAuthStore();
   
-  if (!authStore.user && !authStore.loading) {
+  if (!authStore.user && !authStore.loading && !authStore.checking) {
+    authStore.checking = true; 
     await authStore.checkAuth();
+    authStore.checking = false;
   }
   
   const publicPages = ['/', '/login', '/register'];

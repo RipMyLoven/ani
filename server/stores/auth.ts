@@ -11,6 +11,7 @@ export interface User {
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const loading = ref(false);
+  const checking = ref(false); 
   
   function setUser(newUser: User | null) {
     user.value = newUser;
@@ -39,22 +40,20 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = response.user;
       }
     } catch (error) {
-      console.log('Not authenticated or error checking auth');
       user.value = null;
     } finally {
-      loading.value = false;
+      user.value = null;
     }
   }
   
   return {
     user,
     loading,
+    checking,
     setUser,
     logout,
     checkAuth
   };
 }, {
-  persist: {
-    storage: process.client ? localStorage : undefined
-  }
+  persist: true
 });
