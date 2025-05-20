@@ -28,9 +28,17 @@ export const useAuthStore = defineStore('auth', () => {
   async function checkAuth() {
     try {
       loading.value = true;
-      const { user: fetchedUser } = await $fetch<{ user: User }>('/api/auth/me');
-      user.value = fetchedUser;
+      const response = await $fetch<{ user: User }>('/api/auth/me', {
+        headers: {
+          'client-side': 'true'
+        }
+      });
+      
+      if (response && response.user) {
+        user.value = response.user;
+      }
     } catch (error) {
+      console.log('Not authenticated or error checking auth');
       user.value = null;
     } finally {
       loading.value = false;
@@ -45,5 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
     checkAuth
   };
 }, {
-  persist: true
+  persist: {
+    storage: process.client ? localStorage : undefined
+  }
 });
