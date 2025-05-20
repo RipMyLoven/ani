@@ -8,16 +8,18 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const [username] = Buffer.from(token, 'base64').toString().split(':');
+    const tokenParts = Buffer.from(token, 'base64').toString().split(':');
+    const username = tokenParts[0];
+    const sessionToken = tokenParts[1];
     
-    if (!username) {
+    if (!username || !sessionToken) {
       throw createError({ statusCode: 401, statusMessage: 'Invalid token' });
     }
     
     const db = await getDb();
     const usersQuery = await db.query(`
-      SELECT * FROM user WHERE username = $username
-    `, { username }) as any[];
+      SELECT * FROM user WHERE username = $username AND sessionToken = $sessionToken AND sessionToken != ""
+    `, { username, sessionToken }) as any[];
     
     let user = null;
     if (Array.isArray(usersQuery) && usersQuery.length > 0) {
@@ -27,17 +29,18 @@ export default defineEventHandler(async (event) => {
     }
     
     if (!user) {
-      throw createError({ statusCode: 401, statusMessage: 'User not found' });
+      throw createError({ statusCode: 401, statusMessage: 'User not found or session expired' });
     }
     
     return { 
       user: { 
         id: user.id, 
         username: user.username, 
-        email: user.email 
+        email: user.email
       } 
     };
   } catch (error) {
+    console.error('Authentication check error:', error);
     throw createError({ statusCode: 401, statusMessage: 'Authentication failed' });
   }
 });

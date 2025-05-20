@@ -1,19 +1,26 @@
 import { useAuthStore } from '~/server/stores/auth';
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  if (to.path === '/login' || to.path === '/register') {
-    return;
+  if (process.server) return;
+  
+  const authStore = useAuthStore();
+  
+  if (!authStore.user && !authStore.loading) {
+    await authStore.checkAuth();
   }
   
-  if (to.meta.requiresAuth) {
-    const authStore = useAuthStore();
-    
-    if (!authStore.user) {
-      await authStore.checkAuth();
-    }
-    
-    if (!authStore.user) {
-      return navigateTo('/login');
-    }
+  const publicPages = ['/', '/login', '/register'];
+  const isPublicPage = publicPages.includes(to.path);
+  
+  if (isPublicPage && authStore.user) {
+    console.log('Redirecting authenticated user from public page to home');
+    return navigateTo('/home');
+  }
+  
+  const authRequired = to.path.startsWith('/home');
+  
+  if (authRequired && !authStore.user) {
+    console.log('Redirecting unauthenticated user to login');
+    return navigateTo('/login');
   }
 });

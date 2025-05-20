@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, createError, setCookie } from 'h3';
 import { getDb } from '~/server/utils/surreal';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import type { User } from '~/server/stores/auth';
 
 interface ExtendedUser extends User {
@@ -41,7 +42,17 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 401, statusMessage: 'Invalid username or password' });
     }
 
-    const token = Buffer.from(`${user.username}:${Date.now()}`).toString('base64');
+    const sessionToken = crypto.randomUUID();
+    
+    await db.query(`
+      UPDATE $id SET 
+        sessionToken = $sessionToken
+    `, { 
+      id: user.id,
+      sessionToken 
+    });
+
+    const token = Buffer.from(`${user.username}:${sessionToken}:${Date.now()}`).toString('base64');
     setCookie(event, 'token', token, { 
       httpOnly: true, 
       path: '/', 
@@ -54,7 +65,8 @@ export default defineEventHandler(async (event) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        email: user.email 
+        email: user.email,
+        sessionToken 
       } 
     };
   } catch (error: any) {

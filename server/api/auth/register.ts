@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError, setCookie } from 'h3';
 import { getDb } from '~/server/utils/surreal';
 import bcrypt from 'bcryptjs';
 import type { User } from '~/server/stores/auth';
+import crypto from 'crypto';
 
 interface ExtendedUser extends User {
   password: string;
@@ -51,13 +52,17 @@ export default defineEventHandler(async (event) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Генерация sessionToken
+    const sessionToken = crypto.randomUUID();
+
     const created = await db.query(`
       CREATE user SET 
         username = $username, 
         email = $email, 
         password = $hashedPassword, 
-        created_at = time::now()
-    `, { username, email, hashedPassword }) as any[];
+        created_at = time::now(),
+        sessionToken = $sessionToken
+    `, { username, email, hashedPassword, sessionToken }) as any[];
     
     console.log("Creation response:", JSON.stringify(created));
 
@@ -96,7 +101,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: 'Failed to create user' });
     }
 
-    const token = Buffer.from(`${user.username}:${Date.now()}`).toString('base64');
+    // Изменение формирования token
+    const token = Buffer.from(`${user.username}:${sessionToken}:${Date.now()}`).toString('base64');
     setCookie(event, 'token', token, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 7 });
 
     return { ok: true, user: { id: user.id, username: user.username, email: user.email } };
