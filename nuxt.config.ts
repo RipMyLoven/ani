@@ -1,6 +1,5 @@
 export default defineNuxtConfig({
   components: [
-    { path: '~/components/UI' },
     { path: '~/components/burgercomponents' },
 
     { path: '~/pages/index/components' },
@@ -27,22 +26,4 @@ export default defineNuxtConfig({
   ],
 
   compatibilityDate: '2024-08-11',
-
-  app: {
-    head: {
-      script: [
-        {
-          src: 'https://telegram.org/js/telegram-web-app.js',
-          async: true,
-          defer: true
-        }
-      ],
-      meta: [
-        {
-          name: 'viewport',
-          content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'
-        }
-      ]
-    }
-  }
 })

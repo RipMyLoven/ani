@@ -6,7 +6,9 @@
       <div v-if="authStore.user" class="mb-6">
         <div class="mb-4 flex items-center justify-center">
           <div class="w-20 h-20 bg-[#333333] rounded-full flex items-center justify-center mr-4">
-            <IconUser size="36" class="text-white" />
+            <div>
+              <!-- Placeholder for user avatar -->
+            </div>
           </div>
           <div>
             <h2 class="text-xl font-medium">{{ authStore.user.username }}</h2>
@@ -49,9 +51,11 @@ import { useRouter } from '#app';
 import { onMounted } from 'vue';
 
 definePageMeta({
-  requiresAuth: true
+  title: 'Index Page',
+  layout: 'clean',
+  middleware: ['fade-transition'],
+  order: 1,
 });
-
 const authStore = useAuthStore();
 const router = useRouter();
 
