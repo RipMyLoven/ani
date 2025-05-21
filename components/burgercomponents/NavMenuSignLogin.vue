@@ -7,11 +7,19 @@
         :class="{ active: isActive('/login') }"
       >
         <div>
-          <div class="w-7 h-7 mx-auto flex items-center justify-center"
-               :class="{ 'icon-active': isActive('/login'), 'grayscale': !isActive('/login') }">
-            <span class="material-icons">person</span>
-          </div>
-          <p class="mt-1 text-xs">Login</p>
+          <img 
+            class="w-7 mx-auto" 
+            :class="{ 'icon-active': isActive('/login'), 'hidden': !isActive('/login') }"
+            src="~/public/assets/icons/login-active.svg" 
+            alt=""
+          />
+          <img 
+            class="w-7 mx-auto grayscale" 
+            :class="{ 'hidden': isActive('/login') }"
+            src="~/public/assets/icons/login.svg" 
+            alt=""
+          />
+          <p class="mt-1 text-xs">login</p>
         </div>
       </NuxtLink>
 
@@ -21,11 +29,24 @@
         :class="{ active: isActive('/register') }"
       >
         <div>
-          <div class="w-7 h-7 mx-auto flex items-center justify-center"
-               :class="{ 'icon-active': isActive('/register'), 'grayscale': !isActive('/register') }">
-            <span class="material-icons">how_to_reg</span>
-          </div>
-          <p class="mt-1 text-xs">Register</p>
+          <img 
+            class="w-7 mx-auto" 
+            :class="{ 'icon-active': isActive('/register'), 'hidden': !isActive('/register') }"
+
+
+
+            src="~/public/assets/icons/register-active.svg" 
+            alt="register Active"
+          />
+          <img 
+            class="w-7 mx-auto grayscale" 
+            :class="{ 'hidden': isActive('/register') }"
+
+
+            src="~/public/assets/icons/register.svg" 
+            alt="register"
+          />
+          <p class="mt-1 text-xs">register</p>
         </div>
       </NuxtLink>
     </div>
