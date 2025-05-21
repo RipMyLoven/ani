@@ -11,7 +11,6 @@
 </template>
 
 <script setup lang="ts">
-// Удалил ненужный код
 </script>
 
 <style>

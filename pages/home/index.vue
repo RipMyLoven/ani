@@ -62,7 +62,7 @@ import { onMounted, ref } from 'vue';
 
 definePageMeta({
   title: 'Index Page',
-  layout: 'clean',
+  layout: 'main',
   middleware: ['fade-transition'],
   order: 1,
 });
