@@ -9,7 +9,7 @@ interface DbConfig {
 }
 
 const DEFAULT_CONFIG: DbConfig = {
-  url: "http://127.0.0.1:8000/rpc",
+  url: "",
   namespace: "ani",
   database: "ani",
   username: "admin",
@@ -19,17 +19,19 @@ const DEFAULT_CONFIG: DbConfig = {
 export async function getDb(config: DbConfig = DEFAULT_CONFIG): Promise<Surreal> {
   const db = new Surreal();
   
-  await db.connect(config.url);
-  
-  await db.use({
-    namespace: config.namespace,
-    database: config.database
-  });
-  
-  await db.signin({
-    username: config.username,
-    password: config.password,
-  });
-  
-  return db;
+  try {
+    
+    await db.connect(config.url, {
+      namespace: config.namespace,
+      database: config.database,
+      auth: {
+        username: config.username,
+        password: config.password
+      }
+    });
+    
+    return db;
+  } catch (error) {
+    throw error;
+  }
 }
