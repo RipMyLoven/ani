@@ -9,7 +9,7 @@ interface DbConfig {
 }
 
 const DEFAULT_CONFIG: DbConfig = {
-  url: "",
+  url: process.env.SURREAL_URL || "",
   namespace: "ani",
   database: "ani",
   username: "admin",
