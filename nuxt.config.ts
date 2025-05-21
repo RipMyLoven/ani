@@ -3,6 +3,7 @@ export default defineNuxtConfig({
     { path: '~/components/burgercomponents' },
 
     { path: '~/pages/index/components' },
+    { path: '~/pages/settings/components' },
     { path: '~/pages/login/components' },
     { path: '~/pages/register/components' },
     '~/components' 
