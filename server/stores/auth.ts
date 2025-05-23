@@ -40,9 +40,10 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = response.user;
       }
     } catch (error) {
+      console.error('Authentication check error:', error);
       user.value = null;
     } finally {
-      user.value = null;
+      loading.value = false; // Only reset loading, not the user!
     }
   }
   

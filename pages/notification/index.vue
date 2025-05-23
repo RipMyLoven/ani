@@ -1,10 +1,12 @@
 <template>
+  <NotificationTemplate />
 </template>
 
-<script setup lang="ts">
+<script setup>
+import NotificationTemplate from './notificationTemplate.vue';
 
 definePageMeta({
-  title: 'Notification',
+  title: 'Notifications',
   layout: 'main',
   middleware: ['transitions'],
   order: 2,
