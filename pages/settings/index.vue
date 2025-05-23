@@ -1,5 +1,4 @@
 <template>
-    <p>Settings</p>
 </template>
 
 <script setup lang="ts">

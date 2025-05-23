@@ -1,17 +1,11 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-3 container mx-auto">
     <div class="flex justify-center items-center">
-      <!--
-        <MainPcNavmenu class="hidden lg:block"/>
-        -->
-
     </div>
 
     <div class="flex flex-col h-screen overflow-y-auto over container mx-auto">
       <div class="flex-1 p-4 lg:p-0">
-          <!-- Main content area 
-          <MainBurgerNavbar class="block lg:hidden"/>
-          -->
+          <BurgerNavbar class="block lg:hidden"/>
           
         <transition name="slide-left" mode="out-in">
           <div>

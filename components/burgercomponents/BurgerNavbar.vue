@@ -13,6 +13,9 @@ import { useRoute } from '#app';
 const route = useRoute();
 
 const linkNameMapping = {
+  '/home': 'Home',
+  '/notification': 'Notifications',
+  '/settings': 'Settings',
   '/login': 'Login',
   '/register': 'Register',
 };

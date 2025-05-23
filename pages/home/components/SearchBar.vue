@@ -1,27 +1,25 @@
 <template>
-  <div class="flex items-center bg-[#222222] p-3 w-full">
-    <!-- Search Icon -->
-    <div class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-white mr-3">
-      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="11" cy="11" r="8" stroke="white" stroke-width="2" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" stroke="white" stroke-width="2" />
-      </svg>
+  <div class="flex flex-row items-center bg-[#222222] p-2 sm:p-3 w-full gap-2">
+    <div class="relative flex-1 w-full">
+      <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
+        <img src="~/public/assets/icons/search.svg" alt="Search" class="w-5 h-5">
+      </div>
+      
+      <input 
+        type="text" 
+        placeholder="Search" 
+        class="w-full h-12 bg-[#333333] border-none rounded px-10 text-white placeholder-gray-400"
+      />
     </div>
     
-    <!-- Search Input -->
-    <input 
-      type="text" 
-      placeholder="Search" 
-      class="flex-1 h-10 bg-[#333333] border-none rounded px-4 mr-3 text-white placeholder-gray-400"
-    />
-    
-    <!-- Add Friend Button -->
-    <button class="h-10 bg-[#333333] border-none rounded px-5 text-white hover:bg-[#444444]">
-      Add Freind
+    <button class="h-12 bg-[#333333] border-none rounded px-3 sm:px-4 text-white hover:bg-[#444444] text-xs sm:text-sm whitespace-nowrap">
+      Add Friend
     </button>
   </div>
 </template>
 
 <script>
-
+export default {
+  name: 'SearchBar'
+}
 </script>
