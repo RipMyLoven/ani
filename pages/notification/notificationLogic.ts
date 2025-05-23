@@ -1,4 +1,5 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useAuthStore } from '~/server/stores/auth';
 
 // Более полное описание типа
 interface Friend {
@@ -9,7 +10,6 @@ interface Friend {
   request_type: 'sent' | 'received';
   created_at?: string;
   email?: string;
-  // Добавьте дополнительные поля из базы данных
   in?: string;
   out?: string;
   recipient_id?: string;
@@ -23,8 +23,17 @@ export function useNotificationLogic() {
   const pendingRequests = ref<Friend[]>([]);
   const isLoading = ref(false);
   const error = ref('');
+  const actionStatus = ref<{type: 'success' | 'error', message: string} | null>(null);
+  const authStore = useAuthStore();
 
-  // Загрузка заявок в друзья
+  const debugInfo = computed(() => {
+    return {
+      currentUser: authStore.user?.username,
+      pendingRequestsCount: pendingRequests.value.length,
+      pendingRequests: pendingRequests.value
+    };
+  });
+
   async function loadPendingRequests() {
     isLoading.value = true;
     error.value = '';
@@ -36,18 +45,10 @@ export function useNotificationLogic() {
       if (response && response.friends) {
         const allFriends = response.friends;
         
-        // Enhanced debug logging
-        console.log('All friend relationships:', allFriends.length);
-        console.log('Pending status count:', allFriends.filter(f => f.status === 'pending').length);
-        console.log('Received type count:', allFriends.filter(f => f.request_type === 'received').length);
-        
-        // Only keep pending requests that are incoming (received)
         pendingRequests.value = allFriends.filter(
           friend => friend.status === 'pending' && friend.request_type === 'received'
         );
         
-        console.log('Final pending requests count:', pendingRequests.value.length);
-        console.log('Pending requests details:', pendingRequests.value);
       }
     } catch (err: any) {
       console.error('Error loading friend requests:', err);
@@ -57,7 +58,6 @@ export function useNotificationLogic() {
     }
   }
 
-  // Принятие заявки в друзья
   async function acceptFriendRequest(friendshipId: string) {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
@@ -65,7 +65,6 @@ export function useNotificationLogic() {
         body: { status: 'accepted' }
       });
       
-      // Удалим заявку из списка после принятия
       pendingRequests.value = pendingRequests.value.filter(req => req.id !== friendshipId);
       
       return { success: true };
@@ -78,14 +77,12 @@ export function useNotificationLogic() {
     }
   }
 
-  // Отклонение заявки в друзья
   async function declineFriendRequest(friendshipId: string) {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
         method: 'DELETE'
       });
       
-      // Удалим заявку из списка после отклонения
       pendingRequests.value = pendingRequests.value.filter(req => req.id !== friendshipId);
       
       return { success: true };
@@ -98,7 +95,46 @@ export function useNotificationLogic() {
     }
   }
 
-  // Загрузим заявки при монтировании компонента
+  async function handleAccept(friendshipId: string) {
+    const result = await acceptFriendRequest(friendshipId);
+    
+    if (result.success) {
+      actionStatus.value = {
+        type: 'success',
+        message: 'Запрос в друзья принят'
+      };
+    } else {
+      actionStatus.value = {
+        type: 'error',
+        message: result.message || 'Ошибка при принятии запроса'
+      };
+    }
+    
+    setTimeout(() => {
+      actionStatus.value = null;
+    }, 3000);
+  }
+
+  async function handleDecline(friendshipId: string) {
+    const result = await declineFriendRequest(friendshipId);
+    
+    if (result.success) {
+      actionStatus.value = {
+        type: 'success',
+        message: 'Запрос в друзья отклонен'
+      };
+    } else {
+      actionStatus.value = {
+        type: 'error',
+        message: result.message || 'Ошибка при отклонении запроса'
+      };
+    }
+    
+    setTimeout(() => {
+      actionStatus.value = null;
+    }, 3000);
+  }
+
   onMounted(() => {
     loadPendingRequests();
   });
@@ -107,8 +143,12 @@ export function useNotificationLogic() {
     pendingRequests,
     isLoading,
     error,
+    actionStatus,
+    debugInfo,
     loadPendingRequests,
     acceptFriendRequest,
-    declineFriendRequest
+    declineFriendRequest,
+    handleAccept,
+    handleDecline
   };
 }

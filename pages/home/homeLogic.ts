@@ -18,7 +18,6 @@ interface SearchResponse {
   users: any[];
 }
 
-// Add this new interface for the exact match response
 interface ExactMatchResponse {
   user: {
     id: string;
@@ -35,6 +34,7 @@ export function useHomeLogic() {
   const searchResults = ref<any[]>([]);
   const isSearching = ref(false);
   const error = ref('');
+  const friendAddStatus = ref<{ type: 'success' | 'error', message: string } | null>(null);
 
   const allFriends = computed(() => {
     return [
@@ -162,6 +162,76 @@ export function useHomeLogic() {
     }
   }
 
+  // Moved from HomeTemplate.vue
+  function handleSearch(term: string) {
+    searchTerm.value = term;
+    searchUsers();
+  }
+
+  // Moved from HomeTemplate.vue
+  function clearSearch() {
+    searchResults.value = [];
+  }
+
+  // Moved from HomeTemplate.vue
+  async function handleAddFriendByUsername(username: string) {
+    try {
+      friendAddStatus.value = null;
+      const result = await addFriendByUsername(username);
+      
+      if (result.success) {
+        friendAddStatus.value = { 
+          type: 'success', 
+          message: `Friend request sent to ${username}` 
+        };
+        loadFriends();
+      } else {
+        // Handle specific error cases
+        if (result.message?.includes('already sent') || result.message?.includes('already exists')) {
+          friendAddStatus.value = { 
+            type: 'error', 
+            message: 'You already have a pending request to this user' 
+          };
+        } else if (result.message?.includes('add yourself')) {
+          friendAddStatus.value = { 
+            type: 'error', 
+            message: "You can't add yourself as a friend" 
+          };
+        } else {
+          friendAddStatus.value = { 
+            type: 'error', 
+            message: result.message || 'Failed to add friend' 
+          };
+        }
+      }
+      
+      // Auto-hide status message after 5 seconds
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 5000);
+      
+      return result;
+    } catch (error: any) {
+      friendAddStatus.value = { 
+        type: 'error', 
+        message: error.message || 'Failed to add friend' 
+      };
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 5000);
+      
+      return { success: false, message: error.message || 'Failed to add friend' };
+    }
+  }
+
+  // Moved from HomeTemplate.vue
+  function openChat(friendId: string): void {
+    // This will be implemented when you add chat functionality
+    console.log('Open chat with friend:', friendId);
+  }
+
   onMounted(() => {
     if (authStore.user) {
       loadFriends();
@@ -176,11 +246,16 @@ export function useHomeLogic() {
     searchResults,
     isSearching,
     error,
+    friendAddStatus,
     searchUsers,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
     loadFriends,
-    addFriendByUsername
+    addFriendByUsername,
+    handleSearch,
+    clearSearch,
+    handleAddFriendByUsername,
+    openChat
   };
 }

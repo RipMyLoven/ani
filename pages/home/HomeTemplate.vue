@@ -3,12 +3,12 @@
     <SearchBar 
       @search="handleSearch" 
       @clear="clearSearch" 
-      @add-friend="addFriendByUsername" 
+      @add-friend="handleAddFriendByUsername" 
     />
     
     <!-- Friend add status message -->
     <div v-if="friendAddStatus" 
-      :class="[
+      :class=" [
         'w-full mt-3 p-2 rounded text-center text-sm',
         friendAddStatus.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
       ]">
@@ -70,87 +70,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { useHomeLogic } from './homeLogic';
 import SearchBar from './components/SearchBar.vue';
 import FriendChat from './components/FriendChat.vue';
 
-const friendAddStatus = ref<{ type: 'success' | 'error', message: string } | null>(null);
-
 const { 
-  friends, 
+  friends,
   pendingRequests,
-  searchTerm, 
-  searchResults, 
+  searchResults,
   isSearching,
-  sendFriendRequest, 
-  acceptFriendRequest, 
+  friendAddStatus,
+  handleSearch,
+  clearSearch,
+  sendFriendRequest,
+  acceptFriendRequest,
   declineFriendRequest,
-  loadFriends,
-  searchUsers,
-  addFriendByUsername: addFriend
+  handleAddFriendByUsername,
+  openChat
 } = useHomeLogic();
-
-function handleSearch(term: string) {
-  searchTerm.value = term;
-  searchUsers();
-}
-
-function clearSearch() {
-  searchResults.value = [];
-}
-
-// Add friend by username function
-async function addFriendByUsername(username: string) {
-  try {
-    friendAddStatus.value = null;
-    const result = await addFriend(username);
-    
-    if (result.success) {
-      friendAddStatus.value = { 
-        type: 'success', 
-        message: `Friend request sent to ${username}` 
-      };
-      loadFriends();
-    } else {
-      // Handle specific error cases
-      if (result.message?.includes('already sent') || result.message?.includes('already exists')) {
-        friendAddStatus.value = { 
-          type: 'error', 
-          message: 'You already have a pending request to this user' 
-        };
-      } else if (result.message?.includes('add yourself')) {
-        friendAddStatus.value = { 
-          type: 'error', 
-          message: "You can't add yourself as a friend" 
-        };
-      } else {
-        friendAddStatus.value = { 
-          type: 'error', 
-          message: result.message || 'Failed to add friend' 
-        };
-      }
-    }
-    
-    // Auto-hide status message after 5 seconds
-    setTimeout(() => {
-      friendAddStatus.value = null;
-    }, 5000);
-  } catch (error: any) {
-    friendAddStatus.value = { 
-      type: 'error', 
-      message: error.message || 'Failed to add friend' 
-    };
-    
-    // Auto-hide error message after 5 seconds
-    setTimeout(() => {
-      friendAddStatus.value = null;
-    }, 5000);
-  }
-}
-
-function openChat(friendId: string): void {
-  // This will be implemented when you add chat functionality
-  console.log('Open chat with friend:', friendId);
-}
 </script>

@@ -26,13 +26,9 @@ export default defineEventHandler(async (event) => {
       LIMIT 10
     `, { term }) as SurrealResult<UserResult>;
     
-    // Добавляем логирование для отладки
-    console.log(`Search query for "${term}"`, JSON.stringify(result));
-    
-    // Инициализируем как пустой массив
     let users: UserResult[] = [];
     
-    // Исправленный парсинг результатов SurrealDB
+    // Парсинг структуры результата SurrealDB
     if (Array.isArray(result) && result.length > 0) {
       const firstItem = result[0] as any;
       
@@ -43,15 +39,11 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // Логируем количество найденных пользователей
-    console.log(`Found ${users.length} users matching "${term}"`);
-    
     return { users };
   } catch (error: any) {
-    console.error('User search error:', error);
     throw createError({
       statusCode: 500,
-      statusMessage: 'Failed to search users',
+      statusMessage: 'Не удалось выполнить поиск пользователей',
       data: { message: error.message }
     });
   }
