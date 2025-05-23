@@ -1,24 +1,22 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 
 export interface User {
   id: string;
   username: string;
   email: string;
-  password?: string;
-  created_at?: string;
-  sessionToken?: string;
+  sessionToken?: string; 
 }
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const loading = ref(false);
-  const checking = ref(false);
-
+  const checking = ref(false); 
+  
   function setUser(newUser: User | null) {
     user.value = newUser;
   }
-
+  
   async function logout() {
     try {
       await $fetch('/api/auth/logout', { method: 'POST' });
@@ -28,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null;
     }
   }
-
+  
   async function checkAuth() {
     try {
       loading.value = true;
@@ -45,25 +43,18 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Authentication check error:', error);
       user.value = null;
     } finally {
-      loading.value = false;
+      loading.value = false; 
     }
   }
-
-  const isAuthenticated = computed(() => !!user.value);
-
+  
   return {
     user,
     loading,
     checking,
-    isAuthenticated,
     setUser,
     logout,
     checkAuth
   };
 }, {
-  persist: {
-    storage: persistedState.localStorage,
-    key: 'auth-store',
-    paths: ['user'] // Persist only the user data
-  }
+  persist: true
 });

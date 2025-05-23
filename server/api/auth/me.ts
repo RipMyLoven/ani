@@ -1,22 +1,21 @@
 import { defineEventHandler, createError } from 'h3';
-import { getSession } from '~/server/utils/session'; // Use our custom getSession
+import { getAuthenticatedUser } from './utils';
 
 export default defineEventHandler(async (event) => {
   try {
-    const user = await getSession(event);
+    const user = await getAuthenticatedUser(event);
     
-    if (!user) {
-      throw createError({
-        statusCode: 401,
-        statusMessage: 'Not authenticated'
-      });
-    }
-
-    return { user };
+    return { 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email
+      } 
+    };
   } catch (error: any) {
-    throw createError({
-      statusCode: error.statusCode || 500,
-      statusMessage: error.statusMessage || 'Authentication check failed'
+    throw createError({ 
+      statusCode: error.statusCode || 401, 
+      statusMessage: error.statusMessage || 'Authentication failed' 
     });
   }
 });

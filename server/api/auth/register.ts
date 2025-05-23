@@ -1,7 +1,7 @@
 import { defineEventHandler, readBody, createError } from 'h3';
 import { getDb } from '~/server/utils/surreal';
 import bcrypt from 'bcryptjs';
-import type { User } from '~/server/types/auth'; // Изменен импорт
+import type { User } from '~/server/stores/auth';
 import { checkUserExists, parseSurrealResult, generateSessionToken, createAuthToken } from './utils';
 
 interface ExtendedUser extends User {

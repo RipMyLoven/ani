@@ -1,18 +1,14 @@
 <template>
   <div class="mb-4">
-    <!-- Время уведомления -->
     <div class="text-xs text-gray-500 text-center mb-1">
       {{ formattedDate }}
     </div>
     
-    <!-- Контент уведомления -->
     <div class="flex">
-      <!-- Аватар отправителя -->
       <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white mr-2">
         {{ request.username.charAt(0).toUpperCase() }}
       </div>
       
-      <!-- Содержимое уведомления -->
       <div class="flex-1">
         <div class="bg-[#333333] rounded-lg p-3">
           <div class="flex items-center justify-between mb-2">

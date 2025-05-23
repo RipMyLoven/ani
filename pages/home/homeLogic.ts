@@ -1,17 +1,13 @@
 import { ref, onMounted, computed } from 'vue';
-import { useAuthStore } from '~/stores/auth';
-import { useRouter } from 'vue-router';
-import type { CreateChatResponse } from '~/types/chat';
-import type { SocketInstance } from '~/types/socket';
+import { useAuthStore } from '~/server/stores/auth';
 
 export interface Friend {
-  id: string;           // это friendship ID (например, friendship:xxx)
+  id: string;
   username: string;
   avatar?: string;
   status: 'pending' | 'accepted' | 'online' | 'offline';
   requestType?: 'sent' | 'received';
   lastMessage?: string;
-  friend_id?: string;   // это actual user ID (например, user:xxx)
 }
 
 interface FriendsResponse {
@@ -32,7 +28,6 @@ interface ExactMatchResponse {
 
 export function useHomeLogic() {
   const authStore = useAuthStore();
-  const router = useRouter();
   const friends = ref<Friend[]>([]);
   const pendingRequests = ref<Friend[]>([]);
   const searchTerm = ref('');
@@ -40,8 +35,6 @@ export function useHomeLogic() {
   const isSearching = ref(false);
   const error = ref('');
   const friendAddStatus = ref<{ type: 'success' | 'error', message: string } | null>(null);
-  const currentChatFriend = ref<Friend | null>(null); // Текущий друг для чата
-  const chatMessages = ref<{ sender: string; content: string }[]>([]); // Указываем тип массива сообщений
 
   const allFriends = computed(() => {
     return [
@@ -233,72 +226,18 @@ export function useHomeLogic() {
     }
   }
 
-  // Update the openChat function to navigate
-  async function openChat(friendId: string) {
-    console.log('[HOME DEBUG] openChat called with friendId:', friendId);
-    
-    try {
-      // Ensure we have a clean ID and then add the user: prefix
-      const cleanId = friendId.replace(/^user:/, '');
-      const participantId = `user:${cleanId}`;
-      
-      console.log('[HOME DEBUG] Using participantId:', participantId);
-      
-      const chatResponse = await $fetch<CreateChatResponse>('/api/chat', {
-        method: 'POST',
-        body: { 
-          participantId: participantId,
-          chatType: 'private'
-        }
-      });
-      
-      console.log('[HOME DEBUG] Chat response:', chatResponse);
-      
-      if (!chatResponse?.chat?.id) {
-        throw new Error('Failed to create or get chat - no chat ID returned');
-      }
-      
-      // Extract chat ID (remove chat: prefix if present)
-      const chatId = chatResponse.chat.id.toString().replace(/^chat:/, '');
-      console.log('[HOME DEBUG] Chat ID:', chatId);
-      
-      // Join chat via WebSocket if available
-      try {
-        const { $socket } = useNuxtApp() as { $socket: SocketInstance };
-        if ($socket.getInstance()) {
-          $socket.emit('join_chat', { chatId });
-          console.log('[HOME DEBUG] Joined chat via WebSocket');
-        }
-      } catch (socketError) {
-        console.warn('[HOME DEBUG] WebSocket not available, continuing without real-time features');
-      }
-      
-      // Navigate to chat page
-      await router.push(`/chat?chatId=${encodeURIComponent(chatId)}`);
-      
-    } catch (error: any) {
-      console.error('[HOME DEBUG] Failed to open chat:', error);
-      
-      // Show user-friendly error
-      friendAddStatus.value = {
-        type: 'error',
-        message: 'Failed to open chat. Please try again.'
-      };
-      
-      // Auto-hide error after 3 seconds
-      setTimeout(() => {
-        friendAddStatus.value = null;
-      }, 3000);
-    }
+  // Moved from HomeTemplate.vue
+  function openChat(friendId: string): void {
+    // This will be implemented when you add chat functionality
+    console.log('Open chat with friend:', friendId);
   }
-  
+
   onMounted(() => {
-    // Добавляем проверку на клиентскую сторону
-    if (process.client && authStore.user) {
+    if (authStore.user) {
       loadFriends();
     }
   });
-  
+
   return {
     friends,
     pendingRequests,
@@ -317,8 +256,6 @@ export function useHomeLogic() {
     handleSearch,
     clearSearch,
     handleAddFriendByUsername,
-    openChat,
-    currentChatFriend,
-    chatMessages
+    openChat
   };
 }

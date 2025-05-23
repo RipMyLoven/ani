@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   try {
     const db = await getDb();
     
-    // Находим точное совпадение пользователя (нечувствительно к регистру)
+    // Find exact username match (case insensitive)
     const result = await db.query(`
       SELECT id, username, email FROM user 
       WHERE string::lowercase(username) = string::lowercase($username)
@@ -28,10 +28,7 @@ export default defineEventHandler(async (event) => {
     
     let user = null;
     
-    // Добавляем логирование для отладки
-    console.log(`Exact match query for "${username}"`, JSON.stringify(result));
-    
-    // Исправленный парсинг результатов SurrealDB
+    // Parse SurrealDB result structure
     if (Array.isArray(result) && result.length > 0) {
       const firstItem = result[0] as any;
       
@@ -42,12 +39,8 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // Добавляем логирование найденного пользователя
-    console.log(`User found for "${username}":`, user ? "yes" : "no");
-    
     return { user };
   } catch (error: any) {
-    console.error('User exact match search error:', error);
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to find user',

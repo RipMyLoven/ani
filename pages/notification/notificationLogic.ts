@@ -1,15 +1,18 @@
 import { ref, onMounted, computed } from 'vue';
-import { useAuthStore } from '~/stores/auth'; // Fixed import path
+import { useAuthStore } from '~/server/stores/auth';
 
 // Более полное описание типа
 interface Friend {
   id: string;
   username: string;
-  email: string;
-  status: 'pending' | 'accepted' | 'declined';
-  request_type: 'sent' | 'received';
-  created_at: string;
+  status: 'pending' | 'accepted';
   friend_id: string;
+  request_type: 'sent' | 'received';
+  created_at?: string;
+  email?: string;
+  in?: string;
+  out?: string;
+  recipient_id?: string;
 }
 
 interface FriendsResponse {
@@ -20,15 +23,15 @@ export function useNotificationLogic() {
   const pendingRequests = ref<Friend[]>([]);
   const isLoading = ref(false);
   const error = ref('');
-  const actionStatus = ref<{ type: 'success' | 'error', message: string } | null>(null);
+  const actionStatus = ref<{type: 'success' | 'error', message: string} | null>(null);
+  const authStore = useAuthStore();
 
   const debugInfo = computed(() => {
-    return JSON.stringify({
+    return {
+      currentUser: authStore.user?.username,
       pendingRequestsCount: pendingRequests.value.length,
-      pendingRequests: pendingRequests.value,
-      isLoading: isLoading.value,
-      error: error.value
-    }, null, 2);
+      pendingRequests: pendingRequests.value
+    };
   });
 
   async function loadPendingRequests() {
@@ -55,57 +58,81 @@ export function useNotificationLogic() {
     }
   }
 
-  async function handleAccept(friendshipId: string) {
+  async function acceptFriendRequest(friendshipId: string) {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
         method: 'PUT',
         body: { status: 'accepted' }
       });
-
-      actionStatus.value = { type: 'success', message: 'Friend request accepted!' };
       
-      // Remove from pending requests
       pendingRequests.value = pendingRequests.value.filter(req => req.id !== friendshipId);
       
-      // Auto-hide status after 3 seconds
-      setTimeout(() => {
-        actionStatus.value = null;
-      }, 3000);
-
+      return { success: true };
     } catch (err: any) {
-      console.error('Error accepting friend request:', err);
-      actionStatus.value = { type: 'error', message: 'Failed to accept friend request' };
-      
-      setTimeout(() => {
-        actionStatus.value = null;
-      }, 3000);
+      console.error('Ошибка при принятии заявки в друзья:', err);
+      return { 
+        success: false, 
+        message: err.message || 'Не удалось принять заявку в друзья' 
+      };
     }
   }
 
-  async function handleDecline(friendshipId: string) {
+  async function declineFriendRequest(friendshipId: string) {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
         method: 'DELETE'
       });
-
-      actionStatus.value = { type: 'success', message: 'Friend request declined' };
       
-      // Remove from pending requests
       pendingRequests.value = pendingRequests.value.filter(req => req.id !== friendshipId);
       
-      // Auto-hide status after 3 seconds
-      setTimeout(() => {
-        actionStatus.value = null;
-      }, 3000);
-
+      return { success: true };
     } catch (err: any) {
-      console.error('Error declining friend request:', err);
-      actionStatus.value = { type: 'error', message: 'Failed to decline friend request' };
-      
-      setTimeout(() => {
-        actionStatus.value = null;
-      }, 3000);
+      console.error('Ошибка при отклонении заявки в друзья:', err);
+      return { 
+        success: false, 
+        message: err.message || 'Не удалось отклонить заявку в друзья' 
+      };
     }
+  }
+
+  async function handleAccept(friendshipId: string) {
+    const result = await acceptFriendRequest(friendshipId);
+    
+    if (result.success) {
+      actionStatus.value = {
+        type: 'success',
+        message: 'Запрос в друзья принят'
+      };
+    } else {
+      actionStatus.value = {
+        type: 'error',
+        message: result.message || 'Ошибка при принятии запроса'
+      };
+    }
+    
+    setTimeout(() => {
+      actionStatus.value = null;
+    }, 3000);
+  }
+
+  async function handleDecline(friendshipId: string) {
+    const result = await declineFriendRequest(friendshipId);
+    
+    if (result.success) {
+      actionStatus.value = {
+        type: 'success',
+        message: 'Запрос в друзья отклонен'
+      };
+    } else {
+      actionStatus.value = {
+        type: 'error',
+        message: result.message || 'Ошибка при отклонении запроса'
+      };
+    }
+    
+    setTimeout(() => {
+      actionStatus.value = null;
+    }, 3000);
   }
 
   onMounted(() => {
@@ -119,6 +146,8 @@ export function useNotificationLogic() {
     actionStatus,
     debugInfo,
     loadPendingRequests,
+    acceptFriendRequest,
+    declineFriendRequest,
     handleAccept,
     handleDecline
   };

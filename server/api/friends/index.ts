@@ -74,14 +74,6 @@ async function handleGetFriends(event: any) {
     const outgoingFriends = buildFriendsList(outgoingFriendships_parsed, friendUsersMap, 'sent');
     const incomingFriends = buildFriendsList(incomingFriendships_parsed, friendUsersMap, 'received');
 
-    // Add this for debugging
-    console.log('[FRIENDS DEBUG] Sample friendship data:', {
-      outgoingFriendships_parsed: outgoingFriendships_parsed.slice(0, 1),
-      incomingFriendships_parsed: incomingFriendships_parsed.slice(0, 1),
-      friendUsersMap: Object.keys(friendUsersMap),
-      currentUserId: userId
-    });
-
     return {
       friends: [...outgoingFriends, ...incomingFriends],
     };

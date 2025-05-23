@@ -40,7 +40,7 @@ const canAddFriend = computed(() => {
   return searchInput.value && searchInput.value.trim().length >= 3;
 });
 
-// Custom debounce implementation
+// Debounce search to prevent excessive API calls
 function debouncedEmit(value: string) {
   if (timeoutId) clearTimeout(timeoutId);
   timeoutId = window.setTimeout(() => {
@@ -50,13 +50,11 @@ function debouncedEmit(value: string) {
   }, 300);
 }
 
-// Watch for changes in the search input
 watch(searchInput, (value) => {
   debouncedEmit(value);
 });
 
 function handleSearch() {
-  // Clear results if search is empty
   if (!searchInput.value || searchInput.value.length < 3) {
     emit('clear');
   } else {
