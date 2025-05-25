@@ -1,18 +1,15 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useAuthStore } from '~/stores/auth'; // Fixed import path
 
 // Более полное описание типа
 interface Friend {
   id: string;
   username: string;
-  status: 'pending' | 'accepted';
-  friend_id: string;
+  email: string;
+  status: 'pending' | 'accepted' | 'declined';
   request_type: 'sent' | 'received';
-  created_at?: string;
-  email?: string;
-  // Добавьте дополнительные поля из базы данных
-  in?: string;
-  out?: string;
-  recipient_id?: string;
+  created_at: string;
+  friend_id: string;
 }
 
 interface FriendsResponse {
@@ -23,8 +20,17 @@ export function useNotificationLogic() {
   const pendingRequests = ref<Friend[]>([]);
   const isLoading = ref(false);
   const error = ref('');
+  const actionStatus = ref<{ type: 'success' | 'error', message: string } | null>(null);
 
-  // Загрузка заявок в друзья
+  const debugInfo = computed(() => {
+    return JSON.stringify({
+      pendingRequestsCount: pendingRequests.value.length,
+      pendingRequests: pendingRequests.value,
+      isLoading: isLoading.value,
+      error: error.value
+    }, null, 2);
+  });
+
   async function loadPendingRequests() {
     isLoading.value = true;
     error.value = '';
@@ -36,18 +42,10 @@ export function useNotificationLogic() {
       if (response && response.friends) {
         const allFriends = response.friends;
         
-        // Enhanced debug logging
-        console.log('All friend relationships:', allFriends.length);
-        console.log('Pending status count:', allFriends.filter(f => f.status === 'pending').length);
-        console.log('Received type count:', allFriends.filter(f => f.request_type === 'received').length);
-        
-        // Only keep pending requests that are incoming (received)
         pendingRequests.value = allFriends.filter(
           friend => friend.status === 'pending' && friend.request_type === 'received'
         );
         
-        console.log('Final pending requests count:', pendingRequests.value.length);
-        console.log('Pending requests details:', pendingRequests.value);
       }
     } catch (err: any) {
       console.error('Error loading friend requests:', err);
@@ -57,48 +55,59 @@ export function useNotificationLogic() {
     }
   }
 
-  // Принятие заявки в друзья
-  async function acceptFriendRequest(friendshipId: string) {
+  async function handleAccept(friendshipId: string) {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
         method: 'PUT',
         body: { status: 'accepted' }
       });
+
+      actionStatus.value = { type: 'success', message: 'Friend request accepted!' };
       
-      // Удалим заявку из списка после принятия
+      // Remove from pending requests
       pendingRequests.value = pendingRequests.value.filter(req => req.id !== friendshipId);
       
-      return { success: true };
+      // Auto-hide status after 3 seconds
+      setTimeout(() => {
+        actionStatus.value = null;
+      }, 3000);
+
     } catch (err: any) {
-      console.error('Ошибка при принятии заявки в друзья:', err);
-      return { 
-        success: false, 
-        message: err.message || 'Не удалось принять заявку в друзья' 
-      };
+      console.error('Error accepting friend request:', err);
+      actionStatus.value = { type: 'error', message: 'Failed to accept friend request' };
+      
+      setTimeout(() => {
+        actionStatus.value = null;
+      }, 3000);
     }
   }
 
-  // Отклонение заявки в друзья
-  async function declineFriendRequest(friendshipId: string) {
+  async function handleDecline(friendshipId: string) {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
         method: 'DELETE'
       });
+
+      actionStatus.value = { type: 'success', message: 'Friend request declined' };
       
-      // Удалим заявку из списка после отклонения
+      // Remove from pending requests
       pendingRequests.value = pendingRequests.value.filter(req => req.id !== friendshipId);
       
-      return { success: true };
+      // Auto-hide status after 3 seconds
+      setTimeout(() => {
+        actionStatus.value = null;
+      }, 3000);
+
     } catch (err: any) {
-      console.error('Ошибка при отклонении заявки в друзья:', err);
-      return { 
-        success: false, 
-        message: err.message || 'Не удалось отклонить заявку в друзья' 
-      };
+      console.error('Error declining friend request:', err);
+      actionStatus.value = { type: 'error', message: 'Failed to decline friend request' };
+      
+      setTimeout(() => {
+        actionStatus.value = null;
+      }, 3000);
     }
   }
 
-  // Загрузим заявки при монтировании компонента
   onMounted(() => {
     loadPendingRequests();
   });
@@ -107,8 +116,10 @@ export function useNotificationLogic() {
     pendingRequests,
     isLoading,
     error,
+    actionStatus,
+    debugInfo,
     loadPendingRequests,
-    acceptFriendRequest,
-    declineFriendRequest
+    handleAccept,
+    handleDecline
   };
 }

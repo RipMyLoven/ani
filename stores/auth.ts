@@ -63,7 +63,7 @@ export const useAuthStore = defineStore('auth', () => {
 }, {
   persist: {
     storage: persistedState.localStorage,
-    key: 'auth-store'
-    // paths: ['user'] // <-- Удалить если не поддерживается вашим плагином
+    key: 'auth-store',
+    paths: ['user'] // Persist only the user data
   }
 });

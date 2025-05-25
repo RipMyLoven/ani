@@ -1,6 +1,6 @@
 import { inject, ref, onBeforeUnmount } from 'vue';
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '~/stores/auth';
+import { useAuthStore } from '~/server/stores/auth';
 import { useHomeLogic } from '../home/homeLogic';
 
 export interface Message {

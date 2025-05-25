@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import LoginTemplate from './loginTemplate.vue';
-import { useAuthStore } from '~/server/stores/auth';
+import { useAuthStore } from '~/stores/auth';
 import { useRouter } from '#app';
 
 const authStore = useAuthStore();

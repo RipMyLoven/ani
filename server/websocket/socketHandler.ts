@@ -1,91 +1,96 @@
-import { Server } from 'socket.io';
-import type { Server as HttpServer } from 'http';
+import { Server, Socket } from 'socket.io';
 import { parseAuthToken } from '../api/auth/utils';
 import { getDb } from '../utils/surreal';
-import { extractCleanId } from '../utils/helpers';
+import { extractCleanId } from '../api/friends/utils';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
   username?: string;
 }
 
-export function initializeWebSocket(server: HttpServer) {
-  console.log('[SOCKET HANDLER] Creating Socket.IO server...');
-  
-  if (!server) {
-    throw new Error('HTTP server is required for WebSocket initialization');
-  }
-  
+export function initializeWebSocket(server: any) {
   const io = new Server(server, {
     cors: {
       origin: process.env.CLIENT_URL || "http://localhost:3000",
       methods: ["GET", "POST"],
       credentials: true
-    },
-    transports: ['websocket', 'polling'],
-    allowEIO3: true
+    }
   });
 
-  console.log('[SOCKET HANDLER] Socket.IO server created, setting up handlers...');
-
   // Middleware для аутентификации
-  io.use(async (socket, next) => {
+  io.use(async (socket: Socket, next) => {
     try {
       const token = socket.handshake.auth.token;
-      console.log('[SOCKET AUTH] Authenticating socket with token:', !!token);
       
       if (!token) {
-        console.log('[SOCKET AUTH] No token provided');
         return next(new Error('Authentication token required'));
       }
 
       const tokenData = parseAuthToken(token);
-      if (!tokenData) {
-        console.log('[SOCKET AUTH] Invalid token');
-        return next(new Error('Invalid authentication token'));
+      if (!tokenData || !tokenData.username || !tokenData.sessionToken) {
+        return next(new Error('Invalid token format'));
       }
 
-      (socket as AuthenticatedSocket).userId = `user:${tokenData.username}`;
-      (socket as AuthenticatedSocket).username = tokenData.username;
+      const db = await getDb();
+      const userResult = await db.query(`
+        SELECT id, username, sessionToken FROM user 
+        WHERE username = $username
+      `, { username: tokenData.username });
+
+      if (!userResult || !Array.isArray(userResult) || userResult.length === 0) {
+        return next(new Error('User not found'));
+      }
+
+      const user = userResult[0]?.result?.[0];
+      if (!user || user.sessionToken !== tokenData.sessionToken) {
+        return next(new Error('Invalid session'));
+      }
+
+      (socket as AuthenticatedSocket).userId = user.id;
+      (socket as AuthenticatedSocket).username = user.username;
       
-      console.log('[SOCKET AUTH] Socket authenticated for user:', tokenData.username);
       next();
     } catch (error) {
-      console.error('[SOCKET AUTH] Authentication error:', error);
+      console.error('WebSocket authentication error:', error);
       next(new Error('Authentication failed'));
     }
   });
 
-  io.on('connection', async (socket) => {
+  io.on('connection', async (socket: Socket) => {
     const authSocket = socket as AuthenticatedSocket;
-    console.log(`[SOCKET] User ${authSocket.username} connected with socket ${socket.id}`);
+    console.log(`User ${authSocket.username} connected with socket ${socket.id}`);
 
     try {
       const db = await getDb();
+      
+      // Обновляем статус пользователя как онлайн
       await db.query(`
-        UPSERT user_status:⟨${extractCleanId(authSocket.userId!)}\u27E9 SET 
+        UPSERT user_status:⟨${extractCleanId(authSocket.userId!)}⟩ SET 
           user_id = $userId,
           status = 'online',
           last_seen = time::now(),
           socket_id = $socketId
-      `, {
-        userId: authSocket.userId,
-        socketId: socket.id
+      `, { 
+        userId: authSocket.userId, 
+        socketId: socket.id 
       });
 
+      // Присоединяем пользователя к его личным чатам
       await joinUserChats(authSocket, db);
 
+      // Отправляем подтверждение подключения
       socket.emit('connection_established', {
         message: 'Successfully connected to WebSocket',
         userId: authSocket.userId,
         username: authSocket.username
       });
+
     } catch (error) {
-      console.error('[SOCKET] Error during connection setup:', error);
+      console.error('Error during connection setup:', error);
       socket.emit('connection_error', { message: 'Failed to setup connection' });
     }
 
-    // Event handlers
+    // Обработчики событий
     socket.on('join_chat', async (data) => {
       const db = await getDb();
       await handleJoinChat(authSocket, data, db);
@@ -110,7 +115,6 @@ export function initializeWebSocket(server: HttpServer) {
     });
   });
 
-  console.log('[SOCKET HANDLER] ✅ WebSocket handlers configured');
   return io;
 }
 
@@ -124,7 +128,8 @@ async function joinUserChats(socket: AuthenticatedSocket, db: any) {
     const chats = chatsResult[0]?.result || [];
     
     for (const chat of chats) {
-      socket.join(`chat:${chat.id}`);
+      const chatId = extractCleanId(chat.id);
+      socket.join(`chat:${chatId}`);
     }
     
     console.log(`User ${socket.username} joined ${chats.length} chats`);
@@ -187,7 +192,7 @@ async function handleSendMessage(socket: AuthenticatedSocket, data: any, db: any
 
     const message = messageResult[0]?.result?.[0];
     if (!message) {
-      socket.emit('error', { message: 'Failed to save message' });
+      socket.emit('error', { message: 'Failed to create message' });
       return;
     }
 

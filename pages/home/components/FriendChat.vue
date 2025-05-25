@@ -22,19 +22,13 @@
         <span v-if="friend.status === 'online'" class="text-green-400 text-xs">Online</span>
         <span v-if="friend.status === 'offline'" class="text-gray-400 text-xs">Offline</span>
       </div>
-      
-      <!-- Показываем статус чата если есть -->
-      <div v-if="friend.chatId" class="text-xs text-blue-400 mt-1">
-        Chat available
-      </div>
     </div>
     
     <button 
       @click="openChat()"
       class="ml-2 bg-[#444444] text-white px-3 py-1 rounded text-xs hover:bg-[#555555]"
-      :class="{ 'bg-blue-600 hover:bg-blue-700': friend.chatId }"
     >
-      {{ friend.chatId ? 'Continue Chat' : 'Start Chat' }}
+      Chat
     </button>
   </div>
 </template>
@@ -61,7 +55,6 @@ function openChat() {
   console.log('[FRIEND DEBUG] Friend friend_id:', props.friend.friend_id);
   console.log('[FRIEND DEBUG] Friend username:', props.friend.username);
   console.log('[FRIEND DEBUG] Friend status:', props.friend.status);
-  console.log('[FRIEND DEBUG] Existing chat ID:', props.friend.chatId);
   
   // Используем friend_id если доступен, иначе используем id
   let friendId = props.friend.friend_id || props.friend.id;

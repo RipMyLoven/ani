@@ -1,7 +1,6 @@
 import { defineEventHandler, readBody, createError } from 'h3';
 import { getDb } from '~/server/utils/surreal';
 import { getAuthenticatedUser } from '../auth/utils';
-import { parseSurrealResult } from '~/server/utils/surrealTypes'; // Добавить импорт
 import type { Chat, CreateChatRequest, CreateChatResponse } from '~/types/chat';
 
 export default defineEventHandler(async (event) => {
@@ -36,26 +35,25 @@ async function handleGetChats(event: any) {
       ORDER BY last_message_at DESC
     `, { userId: user.id });
 
-    // Используем parseSurrealResult вместо прямого обращения к .result
-    const chats = parseSurrealResult(chatsResult);
-
+    const chats = chatsResult[0]?.result || [];
+    
     const chatsWithParticipants = await Promise.all(
       chats.map(async (chat: any) => {
         const otherParticipants = chat.participants.filter((p: string) => p !== user.id);
-
+        
         if (otherParticipants.length > 0) {
           const participantsResult = await db.query(`
             SELECT id, username FROM user WHERE id IN $participants
           `, { participants: otherParticipants });
-
-          const participants = parseSurrealResult(participantsResult);
-
+          
+          const participants = participantsResult[0]?.result || [];
+          
           return {
             ...chat,
             other_participants: participants
           };
         }
-
+        
         return chat;
       })
     );
@@ -96,9 +94,14 @@ async function handleCreateChat(event: any) {
 
     // Get all users to debug the data structure
     const allUsersResult = await db.query('SELECT id, username, email FROM user');
-    // Используем parseSurrealResult
-    const allUsers = parseSurrealResult(allUsersResult);
-
+    console.log('[CHAT DEBUG] All users raw result:', JSON.stringify(allUsersResult, null, 2));
+    
+    // Extract users from the correct structure
+    let allUsers = [];
+    if (Array.isArray(allUsersResult) && allUsersResult.length > 0) {
+      allUsers = allUsersResult[0] || [];
+    }
+    
     console.log('[CHAT DEBUG] Extracted all users:', allUsers);
     
     if (allUsers.length === 0) {
@@ -158,9 +161,10 @@ async function handleCreateChat(event: any) {
       participantUserId: participantUserIdStr 
     });
 
-    // Используем parseSurrealResult
-    const existingChats = parseSurrealResult(existingChatResult);
+    // Extract existing chat with correct structure
+    const existingChats = existingChatResult[0] || [];
     if (existingChats.length > 0) {
+      console.log('[CHAT DEBUG] Found existing chat:', existingChats[0]);
       return {
         chat: existingChats[0],
         existing: true
@@ -184,10 +188,11 @@ async function handleCreateChat(event: any) {
       chatType
     });
 
-    // Используем parseSurrealResult
-    const createdChats = parseSurrealResult(chatResult);
+    const createdChats = chatResult[0] || [];
     const chat = createdChats[0];
-
+    
+    console.log('[CHAT DEBUG] Created chat:', chat);
+    
     if (!chat) {
       throw createError({ statusCode: 500, statusMessage: 'Failed to create chat - no result returned' });
     }

@@ -1,7 +1,7 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from '#app';
-import { useAuthStore } from '~/server/stores/auth';
-import type { User } from '~/server/stores/auth';
+import { useAuthStore } from '~/stores/auth';
+import type { User } from '~/stores/auth';
 
 interface RegisterForm {
   username: string;

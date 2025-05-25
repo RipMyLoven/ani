@@ -4,7 +4,8 @@
   
 <script setup lang="ts">
 import IndexTemplate from './indexTemplate.vue';
-import { useAuthStore } from '~/server/stores/auth';
+import { useAuthStore } from '~/stores/auth';
+
 definePageMeta({
   title: 'Index Page',
   layout: 'clean',
@@ -13,8 +14,16 @@ definePageMeta({
 });
 
 onMounted(async () => {
-  const authStore = useAuthStore();
-  await authStore.checkAuth();
+  // Проверяем только на клиенте и если store готов
+  if (process.client) {
+    await nextTick(); // Ждем инициализации store
+    
+    const authStore = useAuthStore();
+    
+    // Проверяем только если пользователь не загружен
+    if (!authStore.user && !authStore.loading) {
+      await authStore.checkAuth();
+    }
+  }
 });
 </script>
-  

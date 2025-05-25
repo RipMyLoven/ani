@@ -1,23 +1,21 @@
-import { createServer } from 'http';
+import { createServer } from 'http'
+import { initializeWebSocket } from './websocket/socketHandler';
 
-// This will be called by Nitro when the server starts
-export default async function (nitroApp: any) {
-  console.log('[SERVER INDEX] Server initialization function called');
+// Инициализация WebSocket сервера
+export default async function initServer() {
+  // Эта функция будет вызвана Nitro при запуске сервера
+  const nitro = (globalThis as any).__nitro__;
   
-  // Hook into the server creation process
-  nitroApp.hooks.hook('listen', async (server: any) => {
-    console.log('[SERVER INDEX] Listen hook in index.ts');
+  if (nitro && nitro.httpServer) {
+    console.log('Initializing WebSocket server...');
+    const io = initializeWebSocket(nitro.httpServer);
     
-    if (server) {
-      try {
-        const { initializeWebSocket } = await import('./websocket/socketHandler');
-        const io = initializeWebSocket(server);
-        (globalThis as any).__socket_io__ = io;
-        console.log('[SERVER INDEX] ✅ WebSocket initialized from index.ts');
-      } catch (error) {
-        console.error('[SERVER INDEX] ❌ WebSocket initialization failed:', error);
-      }
-    }
-  });
+    // Сохраняем экземпляр io глобально для доступа из других частей приложения
+    (globalThis as any).__socket_io__ = io;
+    
+    console.log('WebSocket server initialized successfully');
+  } else {
+    console.warn('HTTP server not available, WebSocket initialization skipped');
+  }
 }
 
