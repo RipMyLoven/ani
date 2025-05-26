@@ -1,13 +1,17 @@
 import { ref, onMounted, computed } from 'vue';
-import { useAuthStore } from '~/server/stores/auth';
+import { useAuthStore } from '~/stores/auth';
+import { useRouter } from 'vue-router';
+import type { CreateChatResponse } from '~/types/chat';
+import type { SocketInstance } from '~/types/socket';
 
 export interface Friend {
-  id: string;
+  id: string;           // это friendship ID (например, friendship:xxx)
   username: string;
   avatar?: string;
   status: 'pending' | 'accepted' | 'online' | 'offline';
   requestType?: 'sent' | 'received';
   lastMessage?: string;
+  friend_id?: string;   // это actual user ID (например, user:xxx)
 }
 
 interface FriendsResponse {
@@ -18,7 +22,6 @@ interface SearchResponse {
   users: any[];
 }
 
-// Add this new interface for the exact match response
 interface ExactMatchResponse {
   user: {
     id: string;
@@ -29,12 +32,16 @@ interface ExactMatchResponse {
 
 export function useHomeLogic() {
   const authStore = useAuthStore();
+  const router = useRouter();
   const friends = ref<Friend[]>([]);
   const pendingRequests = ref<Friend[]>([]);
   const searchTerm = ref('');
   const searchResults = ref<any[]>([]);
   const isSearching = ref(false);
   const error = ref('');
+  const friendAddStatus = ref<{ type: 'success' | 'error', message: string } | null>(null);
+  const currentChatFriend = ref<Friend | null>(null); // Текущий друг для чата
+  const chatMessages = ref<{ sender: string; content: string }[]>([]); // Указываем тип массива сообщений
 
   const allFriends = computed(() => {
     return [
@@ -162,12 +169,133 @@ export function useHomeLogic() {
     }
   }
 
+  // Moved from HomeTemplate.vue
+  function handleSearch(term: string) {
+    searchTerm.value = term;
+    searchUsers();
+  }
+
+  // Moved from HomeTemplate.vue
+  function clearSearch() {
+    searchResults.value = [];
+  }
+
+  // Moved from HomeTemplate.vue
+  async function handleAddFriendByUsername(username: string) {
+    try {
+      friendAddStatus.value = null;
+      const result = await addFriendByUsername(username);
+      
+      if (result.success) {
+        friendAddStatus.value = { 
+          type: 'success', 
+          message: `Friend request sent to ${username}` 
+        };
+        loadFriends();
+      } else {
+        // Handle specific error cases
+        if (result.message?.includes('already sent') || result.message?.includes('already exists')) {
+          friendAddStatus.value = { 
+            type: 'error', 
+            message: 'You already have a pending request to this user' 
+          };
+        } else if (result.message?.includes('add yourself')) {
+          friendAddStatus.value = { 
+            type: 'error', 
+            message: "You can't add yourself as a friend" 
+          };
+        } else {
+          friendAddStatus.value = { 
+            type: 'error', 
+            message: result.message || 'Failed to add friend' 
+          };
+        }
+      }
+      
+      // Auto-hide status message after 5 seconds
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 5000);
+      
+      return result;
+    } catch (error: any) {
+      friendAddStatus.value = { 
+        type: 'error', 
+        message: error.message || 'Failed to add friend' 
+      };
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 5000);
+      
+      return { success: false, message: error.message || 'Failed to add friend' };
+    }
+  }
+
+  // Update the openChat function to navigate
+  async function openChat(friendId: string) {
+    console.log('[HOME DEBUG] openChat called with friendId:', friendId);
+
+    try {
+      const cleanId = friendId.replace(/^user:/, '');
+      const participantId = `user:${cleanId}`;
+
+      const chatResponse = await $fetch<CreateChatResponse>('/api/chat', {
+        method: 'POST',
+        body: {
+          participantId: participantId,
+          chatType: 'private'
+        }
+      });
+
+      console.log('[HOME DEBUG] Chat response:', chatResponse);
+
+      if (!chatResponse?.chat?.id) {
+        throw new Error('Failed to create or get chat - no chat ID returned');
+      }
+
+      // Используем существующий чат, если он есть
+      const chatId = chatResponse.chat.id.toString().replace(/^chat:/, '');
+      console.log('[HOME DEBUG] Chat ID:', chatId, 'Existing:', chatResponse.existing);
+      
+      // Join chat via WebSocket if available
+      try {
+        const { $socket } = useNuxtApp() as { $socket: SocketInstance };
+        if ($socket.getInstance()) {
+          $socket.emit('join_chat', { chatId });
+          console.log('[HOME DEBUG] Joined chat via WebSocket');
+        }
+      } catch (socketError) {
+        console.warn('[HOME DEBUG] WebSocket not available, continuing without real-time features');
+      }
+      
+      // Navigate to chat page
+      await router.push(`/chat?chatId=${encodeURIComponent(chatId)}`);
+      
+    } catch (error: any) {
+      console.error('[HOME DEBUG] Failed to open chat:', error);
+      
+      // Show user-friendly error
+      friendAddStatus.value = {
+        type: 'error',
+        message: 'Failed to open chat. Please try again.'
+      };
+      
+      // Auto-hide error after 3 seconds
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 3000);
+    }
+  }
+  
   onMounted(() => {
-    if (authStore.user) {
+    // Добавляем проверку на клиентскую сторону
+    if (process.client && authStore.user) {
       loadFriends();
     }
   });
-
+  
   return {
     friends,
     pendingRequests,
@@ -176,11 +304,18 @@ export function useHomeLogic() {
     searchResults,
     isSearching,
     error,
+    friendAddStatus,
     searchUsers,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
     loadFriends,
-    addFriendByUsername
+    addFriendByUsername,
+    handleSearch,
+    clearSearch,
+    handleAddFriendByUsername,
+    openChat,
+    currentChatFriend,
+    chatMessages
   };
 }
