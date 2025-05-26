@@ -5,13 +5,12 @@ import type { CreateChatResponse } from '~/types/chat';
 import type { SocketInstance } from '~/types/socket';
 
 export interface Friend {
-  id: string;           // это friendship ID (например, friendship:xxx)
+  id: string;
   username: string;
   avatar?: string;
-  status: 'pending' | 'accepted' | 'online' | 'offline';
-  requestType?: 'sent' | 'received';
-  lastMessage?: string;
-  friend_id?: string;   // это actual user ID (например, user:xxx)
+  status?: 'online' | 'offline' | 'pending' | 'accepted';
+  friend_id?: string;
+  chatId?: string; // Добавляем поле для хранения ID чата
 }
 
 interface FriendsResponse {
@@ -23,11 +22,7 @@ interface SearchResponse {
 }
 
 interface ExactMatchResponse {
-  user: {
-    id: string;
-    username: string;
-    email: string;
-  } | null;
+  user: any;
 }
 
 export function useHomeLogic() {
@@ -40,8 +35,9 @@ export function useHomeLogic() {
   const isSearching = ref(false);
   const error = ref('');
   const friendAddStatus = ref<{ type: 'success' | 'error', message: string } | null>(null);
-  const currentChatFriend = ref<Friend | null>(null); // Текущий друг для чата
-  const chatMessages = ref<{ sender: string; content: string }[]>([]); // Указываем тип массива сообщений
+  const currentChatFriend = ref<Friend | null>(null);
+  const chatMessages = ref<{ sender: string; content: string }[]>([]);
+  const existingChats = ref<Map<string, string>>(new Map()); // friendId -> chatId
 
   const allFriends = computed(() => {
     return [
@@ -52,34 +48,62 @@ export function useHomeLogic() {
 
   async function loadFriends() {
     try {
-      const response = await $fetch<FriendsResponse>('/api/friends');
+      const response: FriendsResponse = await $fetch('/api/friends');
+      
       if (response && response.friends) {
-        friends.value = response.friends.filter((friend: Friend) => friend.status === 'accepted');
-        
-        pendingRequests.value = response.friends.filter(
-          (friend: Friend) => friend.status === 'pending'
-        );
+        friends.value = response.friends.filter(f => f.status === 'accepted');
+        pendingRequests.value = response.friends.filter(f => f.status === 'pending');
       }
+      
+      // Загружаем существующие чаты
+      await loadExistingChats();
     } catch (err: any) {
-      console.error('Error loading friends:', err);
+      console.error('Failed to load friends:', err);
       error.value = err.message || 'Failed to load friends';
     }
   }
 
+  async function loadExistingChats() {
+    try {
+      const response = await $fetch<{ chats: any[] }>('/api/chat');
+      
+      response.chats.forEach(chat => {
+        if (chat.other_participants && chat.other_participants.length > 0) {
+          const otherUser = chat.other_participants[0];
+          const friendId = otherUser.id.toString().replace(/^user:/, '');
+          const chatId = chat.id.toString().replace(/^chat:/, '');
+          existingChats.value.set(friendId, chatId);
+          
+          // Обновляем друзей с информацией о чате
+          const friend = friends.value.find(f => 
+            f.friend_id?.replace(/^user:/, '') === friendId ||
+            f.id?.replace(/^user:/, '') === friendId
+          );
+          if (friend) {
+            friend.chatId = chatId;
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Failed to load existing chats:', err);
+    }
+  }
+
   async function searchUsers() {
-    if (searchTerm.value.trim().length < 3) {
+    if (!searchTerm.value.trim()) {
       searchResults.value = [];
       return;
     }
-
-    isSearching.value = true;
     
+    isSearching.value = true;
     try {
-      const response = await $fetch<SearchResponse>(`/api/users/search?term=${searchTerm.value.trim()}`);
-      searchResults.value = response?.users || [];
+      const response: SearchResponse = await $fetch('/api/friends/search', {
+        query: { q: searchTerm.value }
+      });
+      searchResults.value = response.users || [];
     } catch (err: any) {
-      console.error('Error searching users:', err);
-      error.value = err.message || 'Failed to search users';
+      console.error('Search failed:', err);
+      searchResults.value = [];
     } finally {
       isSearching.value = false;
     }
@@ -92,17 +116,24 @@ export function useHomeLogic() {
         body: { friendId: userId }
       });
       
-      // Update search results to show pending status
-      const userIndex = searchResults.value.findIndex(user => user.id === userId);
-      if (userIndex >= 0) {
-        searchResults.value[userIndex].friendStatus = 'pending';
-      }
+      friendAddStatus.value = {
+        type: 'success',
+        message: 'Friend request sent successfully!'
+      };
       
-      // Reload friends to get updated list
-      await loadFriends();
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 3000);
+      
     } catch (err: any) {
-      console.error('Error sending friend request:', err);
-      error.value = err.message || 'Failed to send friend request';
+      friendAddStatus.value = {
+        type: 'error',
+        message: err.data?.message || 'Failed to send friend request'
+      };
+      
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 3000);
     }
   }
 
@@ -110,137 +141,124 @@ export function useHomeLogic() {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
         method: 'PUT',
-        body: { status: 'accepted' }
+        body: { action: 'accept' }
       });
       
       await loadFriends();
+      
+      friendAddStatus.value = {
+        type: 'success',
+        message: 'Friend request accepted!'
+      };
+      
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 3000);
+      
     } catch (err: any) {
-      console.error('Error accepting friend request:', err);
-      error.value = err.message || 'Failed to accept friend request';
+      friendAddStatus.value = {
+        type: 'error',
+        message: 'Failed to accept friend request'
+      };
+      
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 3000);
     }
   }
 
   async function declineFriendRequest(friendshipId: string) {
     try {
       await $fetch(`/api/friends/${friendshipId}`, {
-        method: 'DELETE'
+        method: 'PUT',
+        body: { action: 'decline' }
       });
       
       await loadFriends();
     } catch (err: any) {
-      console.error('Error declining friend request:', err);
-      error.value = err.message || 'Failed to decline friend request';
+      console.error('Failed to decline friend request:', err);
     }
   }
 
   async function addFriendByUsername(username: string) {
     try {
-      // Use the new interface for the exact match response
-      const searchResponse = await $fetch<ExactMatchResponse>(`/api/users/exact-match?username=${encodeURIComponent(username.trim())}`);
-      const exactMatch = searchResponse?.user;
-      
-      if (!exactMatch) {
-        return { success: false, message: `User "${username}" not found` };
-      }
-      
-      // Check if this user is the current user
-      if (exactMatch.id === authStore.user?.id || 
-          exactMatch.id.toString() === authStore.user?.id.toString() ||
-          exactMatch.username.toLowerCase() === authStore.user?.username.toLowerCase()) {
-        return { success: false, message: "You can't add yourself as a friend" };
-      }
-      
-      // Send friend request
-      await $fetch('/api/friends', {
-        method: 'POST',
-        body: { friendId: exactMatch.id }
+      const exactResponse: ExactMatchResponse = await $fetch('/api/friends/exact-match', {
+        query: { username }
       });
       
-      return { success: true };
-    } catch (err: any) {
-      console.error('Error adding friend by username:', err);
-      error.value = err.message || 'Failed to add friend';
-      
-      if (err.data?.message?.includes('already exists')) {
-        return { success: false, message: 'You already sent a friend request to this user' };
+      if (exactResponse.user) {
+        await sendFriendRequest(exactResponse.user.id);
+      } else {
+        friendAddStatus.value = {
+          type: 'error',
+          message: 'User not found'
+        };
+        
+        setTimeout(() => {
+          friendAddStatus.value = null;
+        }, 3000);
       }
+    } catch (err: any) {
+      friendAddStatus.value = {
+        type: 'error',
+        message: err.data?.message || 'Failed to add friend'
+      };
       
-      return { success: false, message: err.message || 'Failed to add friend' };
+      setTimeout(() => {
+        friendAddStatus.value = null;
+      }, 3000);
     }
   }
 
-  // Moved from HomeTemplate.vue
   function handleSearch(term: string) {
     searchTerm.value = term;
-    searchUsers();
+    if (term.trim()) {
+      searchUsers();
+    } else {
+      searchResults.value = [];
+    }
   }
 
-  // Moved from HomeTemplate.vue
   function clearSearch() {
+    searchTerm.value = '';
     searchResults.value = [];
   }
 
-  // Moved from HomeTemplate.vue
   async function handleAddFriendByUsername(username: string) {
-    try {
-      friendAddStatus.value = null;
-      const result = await addFriendByUsername(username);
-      
-      if (result.success) {
-        friendAddStatus.value = { 
-          type: 'success', 
-          message: `Friend request sent to ${username}` 
-        };
-        loadFriends();
-      } else {
-        // Handle specific error cases
-        if (result.message?.includes('already sent') || result.message?.includes('already exists')) {
-          friendAddStatus.value = { 
-            type: 'error', 
-            message: 'You already have a pending request to this user' 
-          };
-        } else if (result.message?.includes('add yourself')) {
-          friendAddStatus.value = { 
-            type: 'error', 
-            message: "You can't add yourself as a friend" 
-          };
-        } else {
-          friendAddStatus.value = { 
-            type: 'error', 
-            message: result.message || 'Failed to add friend' 
-          };
-        }
-      }
-      
-      // Auto-hide status message after 5 seconds
-      setTimeout(() => {
-        friendAddStatus.value = null;
-      }, 5000);
-      
-      return result;
-    } catch (error: any) {
-      friendAddStatus.value = { 
-        type: 'error', 
-        message: error.message || 'Failed to add friend' 
-      };
-      
-      // Auto-hide error message after 5 seconds
-      setTimeout(() => {
-        friendAddStatus.value = null;
-      }, 5000);
-      
-      return { success: false, message: error.message || 'Failed to add friend' };
-    }
+    await addFriendByUsername(username);
+    clearSearch();
   }
 
-  // Update the openChat function to navigate
+  // Обновленная функция openChat
   async function openChat(friendId: string) {
     console.log('[HOME DEBUG] openChat called with friendId:', friendId);
 
     try {
       const cleanId = friendId.replace(/^user:/, '');
-      const participantId = `user:${cleanId}`;
+      
+      // Проверяем, есть ли уже существующий чат
+      const existingChatId = existingChats.value.get(cleanId);
+      if (existingChatId) {
+        console.log('[HOME DEBUG] Using existing chat:', existingChatId);
+        
+        // Присоединяемся к чату через WebSocket
+        try {
+          const { $socket } = useNuxtApp() as { $socket: SocketInstance };
+          if ($socket.getInstance()) {
+            $socket.emit('join_chat', { chatId: existingChatId });
+            console.log('[HOME DEBUG] Joined existing chat via WebSocket');
+          }
+        } catch (socketError) {
+          console.warn('[HOME DEBUG] WebSocket not available for existing chat');
+        }
+        
+        // Переходим к существующему чату
+        await router.push(`/chat?chatId=${encodeURIComponent(existingChatId)}`);
+        return;
+      }
 
+      // Создаем новый чат только если его нет
+      const participantId = `user:${cleanId}`;
       const chatResponse = await $fetch<CreateChatResponse>('/api/chat', {
         method: 'POST',
         body: {
@@ -255,11 +273,23 @@ export function useHomeLogic() {
         throw new Error('Failed to create or get chat - no chat ID returned');
       }
 
-      // Используем существующий чат, если он есть
       const chatId = chatResponse.chat.id.toString().replace(/^chat:/, '');
+      
+      // Сохраняем информацию о чате
+      existingChats.value.set(cleanId, chatId);
+      
+      // Обновляем друга с информацией о чате
+      const friend = friends.value.find(f => 
+        f.friend_id?.replace(/^user:/, '') === cleanId ||
+        f.id?.replace(/^user:/, '') === cleanId
+      );
+      if (friend) {
+        friend.chatId = chatId;
+      }
+
       console.log('[HOME DEBUG] Chat ID:', chatId, 'Existing:', chatResponse.existing);
       
-      // Join chat via WebSocket if available
+      // Присоединяемся к чату через WebSocket
       try {
         const { $socket } = useNuxtApp() as { $socket: SocketInstance };
         if ($socket.getInstance()) {
@@ -270,19 +300,17 @@ export function useHomeLogic() {
         console.warn('[HOME DEBUG] WebSocket not available, continuing without real-time features');
       }
       
-      // Navigate to chat page
+      // Переходим к чату
       await router.push(`/chat?chatId=${encodeURIComponent(chatId)}`);
       
     } catch (error: any) {
       console.error('[HOME DEBUG] Failed to open chat:', error);
       
-      // Show user-friendly error
       friendAddStatus.value = {
         type: 'error',
         message: 'Failed to open chat. Please try again.'
       };
       
-      // Auto-hide error after 3 seconds
       setTimeout(() => {
         friendAddStatus.value = null;
       }, 3000);
@@ -290,7 +318,6 @@ export function useHomeLogic() {
   }
   
   onMounted(() => {
-    // Добавляем проверку на клиентскую сторону
     if (process.client && authStore.user) {
       loadFriends();
     }
@@ -299,23 +326,21 @@ export function useHomeLogic() {
   return {
     friends,
     pendingRequests,
-    allFriends,
     searchTerm,
     searchResults,
     isSearching,
     error,
     friendAddStatus,
-    searchUsers,
+    currentChatFriend,
+    chatMessages,
+    allFriends,
+    handleSearch,
+    clearSearch,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
-    loadFriends,
-    addFriendByUsername,
-    handleSearch,
-    clearSearch,
     handleAddFriendByUsername,
     openChat,
-    currentChatFriend,
-    chatMessages
+    loadFriends
   };
 }

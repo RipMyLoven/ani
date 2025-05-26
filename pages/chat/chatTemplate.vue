@@ -26,6 +26,11 @@
             :message="message"
           />
         </div>
+        
+        <!-- Typing indicator -->
+        <div v-if="typingUsers.length > 0" class="typing-indicator">
+          {{ typingUsers.join(', ') }} {{ typingUsers.length === 1 ? 'is' : 'are' }} typing...
+        </div>
       </div>
     </div>
   </div>
@@ -37,6 +42,7 @@ import { useRoute } from 'vue-router';
 import { useAuthStore } from '~/stores/auth';
 import LeftMessageChat from './components/LeftMessageChat.vue';
 import type { Message } from '~/types/chat';
+import type { SocketInstance } from '~/types/socket';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -46,9 +52,13 @@ const messages = ref<Message[]>([]);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const newMessage = ref('');
+const typingUsers = ref<string[]>([]);
+const typingTimeout = ref<NodeJS.Timeout | null>(null);
 
 const currentUserId = computed(() => authStore.user?.id);
 const messagesContainer = ref<HTMLElement>();
+
+let socket: SocketInstance | null = null;
 
 onMounted(async () => {
   console.log('[CHAT TEMPLATE] Mounted with chatId:', chatId);
@@ -56,6 +66,7 @@ onMounted(async () => {
     error.value = 'No chat ID provided';
     return;
   }
+  
   await loadMessages();
   setupSocketListeners();
 });
@@ -82,11 +93,63 @@ const setupSocketListeners = () => {
   try {
     console.log('[CHAT TEMPLATE] Setting up socket listeners for chat:', chatId);
     
-    // WebSocket functionality будет добавлена позже
-    // Пока что просто логируем
+    const { $socket } = useNuxtApp() as { $socket: SocketInstance };
+    socket = $socket;
+    
+    if (!socket.getInstance()) {
+      console.warn('[CHAT TEMPLATE] Socket not connected');
+      return;
+    }
+    
+    // Присоединяемся к чату
+    socket.emit('join_chat', { chatId });
+    
+    // Слушатели событий
+    socket.on('new_message', handleNewMessage);
+    socket.on('user_typing', handleUserTyping);
+    socket.on('chat_joined', (data) => {
+      console.log('[CHAT TEMPLATE] Successfully joined chat:', data.chatId);
+    });
     
   } catch (error) {
-    console.warn('WebSocket setup failed:', error);
+    console.warn('[CHAT TEMPLATE] WebSocket setup failed:', error);
+  }
+};
+
+const handleNewMessage = (messageData: any) => {
+  console.log('[CHAT TEMPLATE] Received new message:', messageData);
+  
+  // Проверяем, что сообщение для этого чата
+  if (messageData.chatId === chatId) {
+    const newMsg: Message = {
+      id: messageData.id,
+      chat_id: messageData.chatId,
+      sender_id: messageData.senderId,
+      content: messageData.content,
+      message_type: messageData.messageType || 'text',
+      created_at: messageData.createdAt,
+      is_read: false,
+      is_edited: false,
+      sender_username: messageData.senderUsername
+    };
+    
+    // Проверяем, что сообщение еще не добавлено
+    if (!messages.value.find(m => m.id === newMsg.id)) {
+      messages.value.push(newMsg);
+      nextTick(() => scrollToBottom());
+    }
+  }
+};
+
+const handleUserTyping = (data: any) => {
+  console.log('[CHAT TEMPLATE] User typing event:', data);
+  
+  if (data.isTyping) {
+    if (!typingUsers.value.includes(data.username) && data.username !== authStore.user?.username) {
+      typingUsers.value.push(data.username);
+    }
+  } else {
+    typingUsers.value = typingUsers.value.filter(user => user !== data.username);
   }
 };
 
@@ -96,7 +159,17 @@ const sendMessage = async (content: string) => {
   console.log('[CHAT TEMPLATE] Sending message:', content);
 
   try {
-    const response = await $fetch('/api/chat/messages', {
+    // Отправляем через WebSocket для мгновенного обновления
+    if (socket?.getInstance()) {
+      socket.emit('send_message', {
+        chatId,
+        content: content.trim(),
+        messageType: 'text'
+      });
+    }
+
+    // Также отправляем через API для надежности
+    await $fetch('/api/chat/messages', {
       method: 'POST',
       body: {
         chatId,
@@ -105,26 +178,44 @@ const sendMessage = async (content: string) => {
       }
     });
 
-    // Не проверяйте response.error, просто ловите ошибку через catch
-    // if (!response || response.error) {
-    //   throw new Error('Failed to send message');
-    // }
-
-    // Перезагружаем сообщения
-    await loadMessages();
   } catch (error) {
     console.error('Failed to send message:', error);
+    // Если WebSocket не сработал, перезагружаем сообщения
+    await loadMessages();
   }
 
   newMessage.value = '';
+  stopTyping();
 };
 
 const startTyping = () => {
   console.log('[CHAT TEMPLATE] Start typing');
+  
+  if (socket?.getInstance()) {
+    socket.emit('typing_start', { chatId });
+    
+    // Автоматически останавливаем через 3 секунды
+    if (typingTimeout.value) {
+      clearTimeout(typingTimeout.value);
+    }
+    
+    typingTimeout.value = setTimeout(() => {
+      stopTyping();
+    }, 3000);
+  }
 };
 
 const stopTyping = () => {
   console.log('[CHAT TEMPLATE] Stop typing');
+  
+  if (socket?.getInstance()) {
+    socket.emit('typing_stop', { chatId });
+  }
+  
+  if (typingTimeout.value) {
+    clearTimeout(typingTimeout.value);
+    typingTimeout.value = null;
+  }
 };
 
 const scrollToBottom = () => {
@@ -135,6 +226,7 @@ const scrollToBottom = () => {
 
 const retry = () => {
   loadMessages();
+  setupSocketListeners();
 };
 
 // Provide для layout
@@ -147,6 +239,16 @@ console.log('[CHAT TEMPLATE] Provided functions to layout');
 
 onUnmounted(() => {
   console.log('[CHAT TEMPLATE] Component unmounted');
+  
+  // Отписываемся от событий
+  if (socket) {
+    socket.off('new_message', handleNewMessage);
+    socket.off('user_typing', handleUserTyping);
+  }
+  
+  if (typingTimeout.value) {
+    clearTimeout(typingTimeout.value);
+  }
 });
 </script>
 
@@ -203,5 +305,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.typing-indicator {
+  padding: 0.5rem;
+  font-style: italic;
+  color: #888;
+  text-align: center;
 }
 </style>

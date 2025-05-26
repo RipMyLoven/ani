@@ -18,26 +18,23 @@
       <div class="flex justify-between">
         <h3 class="text-white font-medium">
           {{ displayName }}
-          <small v-if="!friend.username" class="text-gray-400">(ID: {{ shortFriendId }})</small>
         </h3>
-        <span v-if="friend.status === 'pending'" class="text-yellow-400 text-xs">Pending</span>
         <span v-if="friend.status === 'online'" class="text-green-400 text-xs">Online</span>
         <span v-if="friend.status === 'offline'" class="text-gray-400 text-xs">Offline</span>
       </div>
-      <p v-if="friend.lastMessage" class="text-gray-400 text-sm truncate">{{ friend.lastMessage }}</p>
+      
+      <!-- Показываем статус чата если есть -->
+      <div v-if="friend.chatId" class="text-xs text-blue-400 mt-1">
+        Chat available
+      </div>
     </div>
     
-    <!-- Action buttons based on friendship status -->
-    <div v-if="isPendingRequest" class="flex gap-2 ml-2">
-      <button @click="acceptFriendRequest" class="bg-green-600 text-white px-2 py-1 rounded text-xs">
-        Accept
-      </button>
-      <button @click="declineFriendRequest" class="bg-red-600 text-white px-2 py-1 rounded text-xs">
-        Decline
-      </button>
-    </div>
-    <button v-else @click="openChat" class="ml-2 bg-[#444444] text-white px-3 py-1 rounded text-xs hover:bg-[#555555]">
-      Chat
+    <button 
+      @click="openChat()"
+      class="ml-2 bg-[#444444] text-white px-3 py-1 rounded text-xs hover:bg-[#555555]"
+      :class="{ 'bg-blue-600 hover:bg-blue-700': friend.chatId }"
+    >
+      {{ friend.chatId ? 'Continue Chat' : 'Start Chat' }}
     </button>
   </div>
 </template>
@@ -48,39 +45,31 @@ import { computed } from 'vue';
 const props = defineProps({
   friend: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 });
 
-const emit = defineEmits(['accept', 'decline', 'openChat']);
+const emit = defineEmits(['openChat']);
 
 const displayName = computed(() => {
   return props.friend.username || 'Unknown User';
 });
 
-const shortFriendId = computed(() => {
-  return shortId(props.friend.friend_id);
-});
-
-const isPendingRequest = computed(() => {
-  return props.friend.status === 'pending' && props.friend.request_type === 'received';
-});
-
-function shortId(id: string) {
-  if (!id) return '';
-  const parts = id.toString().split(':');
-  return parts.length > 1 ? parts[1].substring(0, 6) : id.substring(0, 6);
-}
-
-function acceptFriendRequest() {
-  emit('accept', props.friend.id);
-}
-
-function declineFriendRequest() {
-  emit('decline', props.friend.id);
-}
-
 function openChat() {
-  emit('openChat', props.friend.id);
+  console.log('[FRIEND DEBUG] Opening chat with friend:', props.friend);
+  console.log('[FRIEND DEBUG] Friend ID:', props.friend.id);
+  console.log('[FRIEND DEBUG] Friend friend_id:', props.friend.friend_id);
+  console.log('[FRIEND DEBUG] Friend username:', props.friend.username);
+  console.log('[FRIEND DEBUG] Friend status:', props.friend.status);
+  console.log('[FRIEND DEBUG] Existing chat ID:', props.friend.chatId);
+  
+  // Используем friend_id если доступен, иначе используем id
+  let friendId = props.friend.friend_id || props.friend.id;
+  
+  // Убираем префикс user: если он есть
+  friendId = friendId.replace(/^user:/, '');
+  
+  console.log('[FRIEND DEBUG] Final friendId to emit:', friendId);
+  emit('openChat', friendId);
 }
 </script>
