@@ -1,24 +1,17 @@
 <template>
   <div class="chat-container">
-    <!-- Error state -->
     <div v-if="error" class="error-message">
       {{ error }}
       <button @click="retry" class="retry-btn">Retry</button>
     </div>
-    
-    <!-- Loading state -->
     <div v-else-if="isLoading" class="loading">
       Loading messages...
     </div>
-    
-    <!-- Chat content -->
     <div v-else class="chat-content">
-      <!-- Messages container -->
       <div class="messages-container" ref="messagesContainer">
         <div v-if="messages.length === 0" class="no-messages">
           No messages yet. Start the conversation!
         </div>
-        
         <div v-else class="messages-list">
           <LeftMessageChat
             v-for="message in messages"
@@ -32,96 +25,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, provide } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, provide } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAuthStore } from '~/stores/auth';
 import LeftMessageChat from './components/LeftMessageChat.vue';
-import type { Message } from '~/types/chat';
+import { usePollingChat } from './chatLogic';
 
 const route = useRoute();
-const authStore = useAuthStore();
+const participantId = route.query.participantId as string | null; // Используй participantId из URL
 
-const chatId = route.query.chatId as string;
-const messages = ref<Message[]>([]);
-const isLoading = ref(false);
-const error = ref<string | null>(null);
+const {
+  chat,
+  messages,
+  isLoading,
+  error,
+  sendMessage,
+  startPolling,
+  stopPolling,
+  initChat,
+  fetchMessages
+} = usePollingChat(participantId);
+
 const newMessage = ref('');
-
-const currentUserId = computed(() => authStore.user?.id);
 const messagesContainer = ref<HTMLElement>();
 
 onMounted(async () => {
-  console.log('[CHAT TEMPLATE] Mounted with chatId:', chatId);
-  if (!chatId) {
-    error.value = 'No chat ID provided';
-    return;
-  }
-  await loadMessages();
-  setupSocketListeners();
+  await initChat();
+  nextTick(scrollToBottom);
 });
 
-const loadMessages = async () => {
-  try {
-    isLoading.value = true;
-    error.value = null;
-    
-    const response = await $fetch<{ messages: Message[]; hasMore: boolean }>(`/api/chat/messages?chatId=${chatId}`);
-    messages.value = response.messages || [];
-    
-    await nextTick();
-    scrollToBottom();
-  } catch (err: any) {
-    console.error('Failed to load messages:', err);
-    error.value = 'Failed to load messages. Please try again.';
-  } finally {
-    isLoading.value = false;
-  }
-};
+onUnmounted(() => {
+  stopPolling();
+});
 
-const setupSocketListeners = () => {
-  try {
-    console.log('[CHAT TEMPLATE] Setting up socket listeners for chat:', chatId);
-    
-    // WebSocket functionality будет добавлена позже
-    // Пока что просто логируем
-    
-  } catch (error) {
-    console.warn('WebSocket setup failed:', error);
-  }
-};
-
-const sendMessage = async (content: string) => {
-  if (!content.trim()) return;
-  
-  console.log('[CHAT TEMPLATE] Sending message:', content);
-  
-  try {
-    const response = await $fetch('/api/chat/messages', {
-      method: 'POST',
-      body: {
-        chatId,
-        content: content.trim(),
-        messageType: 'text'
-      }
-    });
-    
-    if (response.success) {
-      // Перезагружаем сообщения
-      await loadMessages();
-    }
-  } catch (error) {
-    console.error('Failed to send message:', error);
-  }
-  
+const handleSendMessage = async (content: string) => {
+  await sendMessage(content);
   newMessage.value = '';
-};
-
-const startTyping = () => {
-  console.log('[CHAT TEMPLATE] Start typing');
-};
-
-const stopTyping = () => {
-  console.log('[CHAT TEMPLATE] Stop typing');
+  nextTick(scrollToBottom);
 };
 
 const scrollToBottom = () => {
@@ -131,20 +70,13 @@ const scrollToBottom = () => {
 };
 
 const retry = () => {
-  loadMessages();
+  fetchMessages();
 };
 
-// Provide для layout
 provide('newMessage', newMessage);
-provide('sendMessage', sendMessage);
-provide('startTyping', startTyping);
-provide('stopTyping', stopTyping);
-
-console.log('[CHAT TEMPLATE] Provided functions to layout');
-
-onUnmounted(() => {
-  console.log('[CHAT TEMPLATE] Component unmounted');
-});
+provide('sendMessage', handleSendMessage);
+provide('startTyping', () => {});
+provide('stopTyping', () => {});
 </script>
 
 <style scoped>

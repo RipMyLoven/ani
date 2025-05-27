@@ -35,6 +35,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 const props = defineProps({
   friend: {
@@ -44,12 +45,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['openChat']);
+const router = useRouter();
 
 const displayName = computed(() => {
   return props.friend.username || 'Unknown User';
 });
 
-function openChat() {
+const openChat = () => {
   console.log('[FRIEND DEBUG] Opening chat with friend:', props.friend);
   console.log('[FRIEND DEBUG] Friend ID:', props.friend.id);
   console.log('[FRIEND DEBUG] Friend friend_id:', props.friend.friend_id);
@@ -64,5 +66,6 @@ function openChat() {
   
   console.log('[FRIEND DEBUG] Final friendId to emit:', friendId);
   emit('openChat', friendId);
+  router.push(`/chat?participantId=${friendId}`);
 }
 </script>

@@ -2,6 +2,7 @@ import { defineEventHandler, createError, getQuery, getMethod, readBody } from '
 import { getDb } from '~/server/utils/surreal';
 import { getSession } from '~/server/utils/session';
 import { parseSurrealResult } from '~/server/utils/surrealTypes';
+import type { User } from '~/server/types/auth'; // Импортируйте ваш тип User
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event);
@@ -54,12 +55,14 @@ export default defineEventHandler(async (event) => {
   if (method === 'POST') {
     // Отправка сообщения
     const session = await getSession(event);
-    if (!session?.id) {
+    if (!session || !session.user) {
       throw createError({
         statusCode: 401,
         statusMessage: 'Authentication required'
       });
     }
+    const user = session.user as User;
+    const userId = typeof user.id === 'string' ? user.id : (user.id as any).id;
     
     const body = await readBody(event);
     const { chatId, content, messageType = 'text' } = body;
@@ -74,37 +77,39 @@ export default defineEventHandler(async (event) => {
     try {
       const db = await getDb();
       
-      console.log('[MESSAGES API] Creating message:', {
-        chatId: `chat:${chatId}`,
-        senderId: session.id,
-        content: content.trim(),
+      console.log('[CREATE MESSAGE]', {
+        chatId,
+        senderId: userId,
+        content,
         messageType
       });
       
-      const messageResult = await db.query(`
-        CREATE message SET 
+      const messageResult = await db.query(
+        `CREATE message SET 
           chat_id = $chatId,
           sender_id = $senderId,
           content = $content,
           message_type = $messageType,
           created_at = time::now(),
           is_read = false,
-          is_edited = false
-      `, {
-        chatId: `chat:${chatId}`,
-        senderId: session.id,
-        content: content.trim(),
-        messageType
-      });
-      
+          is_edited = false`,
+        {
+          chatId: `chat:${chatId.replace(/^chat:/, '')}`,
+          senderId: `user:${userId.replace(/^user:/, '')}`,
+          content: content.trim(),
+          messageType
+        }
+      );
       const message = parseSurrealResult(messageResult)[0];
+      if (!message) throw createError({ statusCode: 500, statusMessage: 'Failed to create message' });
       
       console.log('[MESSAGES API] Created message:', message);
       
       // Обновляем last_message_at в чате
-      await db.query(`
-        UPDATE $chatId SET last_message_at = time::now()
-      `, { chatId: `chat:${chatId}` });
+      await db.query(
+        `UPDATE $chatId SET last_message_at = time::now()`,
+        { chatId: `chat:${chatId.replace(/^chat:/, '')}` }
+      );
       
       return { 
         success: true, 

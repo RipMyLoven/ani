@@ -1,6 +1,7 @@
 import { H3Event, createError, getCookie } from 'h3';
 import { parseAuthToken } from '../api/auth/utils';
 import { getDb } from './surreal';
+import { parseSurrealResult } from './surrealTypes';
 
 export async function getSession(event: H3Event) {
   const token = getCookie(event, 'token');
@@ -24,8 +25,8 @@ export async function getSession(event: H3Event) {
       sessionToken: tokenData.sessionToken 
     });
     
-    const user = userResult[0]?.result?.[0];
-    return user || null;
+    const user = parseSurrealResult(userResult)[0];
+    return { user };
   } catch (error) {
     return null;
   }
