@@ -30,21 +30,10 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2024-08-11',
 
-  nitro: {
-    plugins: ['~/server/plugins/websocket.ts']
-  },
-
-  // Pinia persistedstate configuration
   piniaPersistedstate: {
     storage: 'localStorage', // or 'sessionStorage' or 'cookies'
     debug: false,
-    auto: true
   },
-
-  // SSR configuration
-  ssr: true,
-  
-  // Отключаем prefetch для предотвращения проблем с hydration
   experimental: {
     payloadExtraction: false
   }

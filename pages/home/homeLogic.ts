@@ -1,5 +1,5 @@
 import { ref, onMounted, computed } from 'vue';
-import { useAuthStore } from '~/server/stores/auth';
+import { useAuthStore } from '~/stores/auth';
 
 export interface Friend {
   id: string;
