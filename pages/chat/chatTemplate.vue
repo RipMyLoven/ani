@@ -2,7 +2,7 @@
   <div class="chat-container">
     <div v-if="error" class="error-message">
       {{ error }}
-      <button @click="retry" class="retry-btn">Retry</button>
+      <button @click="loadMessages" class="retry-btn">Retry</button>
     </div>
     <div v-else-if="isLoading" class="loading">
       Loading messages...
@@ -13,11 +13,12 @@
           No messages yet. Start the conversation!
         </div>
         <div v-else class="messages-list">
-          <LeftMessageChat
-            v-for="message in messages"
-            :key="message.id"
-            :message="message"
-          />
+<LeftMessageChat
+  v-for="message in messages"
+  :key="message.id"
+  :message="message"
+  :current-user-id="currentUserId"
+/>
         </div>
       </div>
     </div>
@@ -25,58 +26,81 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, provide } from 'vue';
+import { ref, onMounted, watch, nextTick, computed } from 'vue'; // Add computed here
 import { useRoute } from 'vue-router';
 import LeftMessageChat from './components/LeftMessageChat.vue';
-import { usePollingChat } from './chatLogic';
+import type { Message } from '~/types/chat';
+import { useAuthStore } from '~/stores/auth';
 
 const route = useRoute();
-const participantId = route.query.participantId as string | null; // Используй participantId из URL
-
-const {
-  chat,
-  messages,
-  isLoading,
-  error,
-  sendMessage,
-  startPolling,
-  stopPolling,
-  initChat,
-  fetchMessages
-} = usePollingChat(participantId);
-
-const newMessage = ref('');
+const messages = ref<Message[]>([]);
+const isLoading = ref(false);
+const error = ref<string | null>(null);
 const messagesContainer = ref<HTMLElement>();
+const auth = useAuthStore();
+const currentUserId = computed(() =>
+  auth.user ? auth.user.id.replace(/^user:/, '') : null
+);
 
-onMounted(async () => {
-  await initChat();
-  nextTick(scrollToBottom);
+const chatId = computed(() => {
+  return route.query.chatId as string || route.query.participantId as string;
 });
 
-onUnmounted(() => {
-  stopPolling();
-});
+// Функция загрузки сообщений
+const loadMessages = async () => {
+  if (!chatId.value) {
+    error.value = 'No chat ID provided';
+    return;
+  }
 
-const handleSendMessage = async (content: string) => {
-  await sendMessage(content);
-  newMessage.value = '';
-  nextTick(scrollToBottom);
+  try {
+    isLoading.value = true;
+    error.value = null;
+    
+    console.log('[chatTemplate] Loading messages for chatId:', chatId.value);
+    
+    const response = await $fetch<{ messages: Message[] }>(
+      `/api/chat/messages?chatId=${chatId.value.replace(/^chat:/, '')}`
+    );
+    
+    messages.value = response.messages || [];
+    console.log('[chatTemplate] Messages loaded:', messages.value.length);
+    
+    // Прокручиваем вниз после загрузки
+    nextTick(scrollToBottom);
+    
+  } catch (err: any) {
+    console.error('[chatTemplate] Error loading messages:', err);
+    error.value = 'Failed to load messages';
+  } finally {
+    isLoading.value = false;
+  }
 };
 
+// Функция прокрутки вниз
 const scrollToBottom = () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
   }
 };
 
-const retry = () => {
-  fetchMessages();
-};
+// Загружаем сообщения при монтировании
+onMounted(() => {
+  loadMessages();
+  
+  // Обновляем сообщения каждые 2 секунды
+  setInterval(loadMessages, 2000);
+});
 
-provide('newMessage', newMessage);
-provide('sendMessage', handleSendMessage);
-provide('startTyping', () => {});
-provide('stopTyping', () => {});
+// Следим за изменениями сообщений и прокручиваем вниз
+watch(messages, (newMessages) => {
+  console.log('[chatTemplate] Messages updated:', {
+    count: newMessages.length,
+    messages: newMessages,
+    currentUserId: currentUserId.value
+  });
+  nextTick(scrollToBottom);
+}, { deep: true });
 </script>
 
 <style scoped>

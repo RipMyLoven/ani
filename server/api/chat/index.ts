@@ -60,10 +60,10 @@ async function handleCreateChat(event: any) {
   const existingChatResult = await db.query(
     `SELECT * FROM chat 
      WHERE chat_type = $chatType 
-       AND $currentUserId IN participants 
-       AND $participantUserId IN participants
        AND array::len(participants) = 2
-       AND is_active = true`,
+       AND is_active = true
+       AND $currentUserId IN participants
+       AND $participantUserId IN participants`,
     {
       chatType,
       currentUserId: `user:${currentUserId}`,

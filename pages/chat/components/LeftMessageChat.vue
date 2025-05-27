@@ -40,13 +40,28 @@ import type { Message } from '~/types/chat';
 
 interface Props {
   message: Message;
+  currentUserId?: string | null; // Change from string | undefined to string | null
 }
 
 const props = defineProps<Props>();
 const authStore = useAuthStore();
 
 const isOwnMessage = computed(() => {
-  return props.message.sender_id === authStore.user?.id;
+  // Use the prop first, then fallback to store
+  const userId = props.currentUserId || authStore.user?.id;
+  if (!userId) return false;
+  
+  // Normalize both IDs for comparison
+  const normalizedUserId = userId.replace(/^user:/, '');
+  const normalizedSenderId = props.message.sender_id.replace(/^user:/, '');
+  
+  console.log('[LeftMessageChat] Comparing IDs:', { 
+    normalizedUserId, 
+    normalizedSenderId, 
+    isOwn: normalizedUserId === normalizedSenderId 
+  });
+  
+  return normalizedUserId === normalizedSenderId;
 });
 
 const getInitials = (name: string) => {

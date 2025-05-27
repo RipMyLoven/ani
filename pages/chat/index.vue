@@ -1,22 +1,11 @@
 <template>
-  <NuxtLayout name="chat">
-    <ChatTemplate />
-  </NuxtLayout>
+  <ChatTemplate />
 </template>
 
-<script lang="ts" setup>
-import { useAuthStore } from '~/stores/auth';
+<script setup lang="ts">
 import ChatTemplate from './chatTemplate.vue';
 
 definePageMeta({
-  title: 'Chat',
-  layout: 'chat',
+  layout: 'chat'
 });
-
-const authStore = useAuthStore();
-
-// Проверяем аутентификацию
-if (process.client && !authStore.user) {
-  await navigateTo('/login');
-}
 </script>

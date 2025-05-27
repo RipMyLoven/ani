@@ -31,10 +31,12 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue';
 
+// Упростим props - уберем ненужные
 const props = defineProps<{
   modelValue: string;
 }>();
 
+// defineEmits для отправки событий
 const emit = defineEmits<{
   send: [message: string];
   'update:modelValue': [value: string];
@@ -45,6 +47,7 @@ const emit = defineEmits<{
 const textareaRef = ref<HTMLTextAreaElement>();
 const localNewMessage = ref(props.modelValue || '');
 
+// Следим за изменениями внешнего значения modelValue
 watch(
   () => props.modelValue,
   (newValue) => {
@@ -52,6 +55,7 @@ watch(
   }
 );
 
+// Синхронизация локального значения с моделью
 watch(
   localNewMessage,
   (newValue) => {
@@ -59,10 +63,12 @@ watch(
   }
 );
 
+// Можно ли отправить сообщение
 const canSend = computed(() => {
   return (localNewMessage.value || '').trim().length > 0;
 });
 
+// Отправка сообщения
 const sendMessage = () => {
   const message = (localNewMessage.value || '').trim();
   console.log('[NAV MENU CHAT] Sending message:', message);
@@ -73,22 +79,26 @@ const sendMessage = () => {
   }
 };
 
+// Обработка Enter
 const handleEnterKey = (event: KeyboardEvent) => {
   if (event.shiftKey) return;
   event.preventDefault();
   sendMessage();
 };
 
+// Обработка фокуса
 const handleFocus = () => {
   console.log('[NAV MENU CHAT] Focus');
   emit('focus');
 };
 
+// Обработка потери фокуса
 const handleBlur = () => {
   console.log('[NAV MENU CHAT] Blur');
   emit('blur');
 };
 
+// Автоматическая регулировка высоты textarea
 const adjustHeight = () => {
   nextTick(() => {
     const textarea = textareaRef.value;
@@ -99,6 +109,7 @@ const adjustHeight = () => {
   });
 };
 
+// Сброс высоты до начальной
 const resetHeight = () => {
   nextTick(() => {
     const textarea = textareaRef.value;
@@ -109,6 +120,7 @@ const resetHeight = () => {
   });
 };
 </script>
+
 
 <style>
 .z-100 {

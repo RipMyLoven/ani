@@ -107,8 +107,7 @@ export default defineEventHandler(async (event) => {
       
       // Обновляем last_message_at в чате
       await db.query(
-        `UPDATE $chatId SET last_message_at = time::now()`,
-        { chatId: `chat:${chatId.replace(/^chat:/, '')}` }
+        `UPDATE chat:${chatId} SET last_message_at = time::now()`
       );
       
       return { 
