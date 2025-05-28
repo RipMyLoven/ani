@@ -46,7 +46,7 @@ chmod +x ./setup.sh
 ### 🔄 Step 4: Reload the Shell Configuration
 
 ```bash
-source .bashrc
+source ~/.bashrc
 ```
 
 ---
