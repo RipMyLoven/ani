@@ -1,5 +1,8 @@
 <template>
-  <div class="flex items-center bg-[#333333] p-3 rounded-lg my-2 w-full">
+  <div 
+    @click="openChat()"
+    class="flex items-center bg-[#333333] p-3 rounded-lg my-2 w-full cursor-pointer hover:bg-[#3a3a3a] transition-colors"
+  >
     <!-- User avatar -->
     <div class="h-12 w-12 rounded-full bg-gray-700 flex-shrink-0 overflow-hidden">
       <img 
@@ -15,21 +18,34 @@
     
     <!-- User info -->
     <div class="ml-3 flex-grow">
-      <div class="flex justify-between">
-        <h3 class="text-white font-medium">
-          {{ displayName }}
-        </h3>
-        <span v-if="friend.status === 'online'" class="text-green-400 text-xs">Online</span>
-        <span v-if="friend.status === 'offline'" class="text-gray-400 text-xs">Offline</span>
+      <div class="flex justify-between items-start">
+        <div class="flex-grow">
+          <!-- Username -->
+          <h3 class="text-white font-medium">
+            {{ displayName }}
+          </h3>
+          
+          <!-- Last message -->
+          <div v-if="friend.lastMessage" class="text-gray-400 text-sm mt-1 truncate">
+            <span v-if="friend.lastMessage.isFromCurrentUser" class="text-gray-500">You: </span>
+            <span v-else class="text-gray-500">{{ friend.lastMessage.sender_username }}: </span>
+            <span>{{ friend.lastMessage.content }}</span>
+          </div>
+          <div v-else class="text-gray-500 text-sm mt-1 italic">
+            No messages yet
+          </div>
+        </div>
+        
+        <!-- Time and status -->
+        <div class="flex flex-col items-end ml-2">
+          <span v-if="friend.lastMessage" class="text-gray-500 text-xs">
+            {{ formatTime(friend.lastMessage.created_at) }}
+          </span>
+          <span v-if="friend.status === 'online'" class="text-green-400 text-xs mt-1">●</span>
+          <span v-else-if="friend.status === 'offline'" class="text-gray-400 text-xs mt-1">●</span>
+        </div>
       </div>
     </div>
-    
-    <button 
-      @click="openChat()"
-      class="ml-2 bg-[#444444] text-white px-3 py-1 rounded text-xs hover:bg-[#555555]"
-    >
-      Chat
-    </button>
   </div>
 </template>
 
@@ -51,12 +67,27 @@ const displayName = computed(() => {
   return props.friend.username || 'Unknown User';
 });
 
+const formatTime = (timestamp: string) => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  
+  if (diffInHours < 24) {
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  } else {
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  }
+};
+
 const openChat = () => {
   console.log('[FRIEND DEBUG] Opening chat with friend:', props.friend);
-  console.log('[FRIEND DEBUG] Friend ID:', props.friend.id);
-  console.log('[FRIEND DEBUG] Friend friend_id:', props.friend.friend_id);
-  console.log('[FRIEND DEBUG] Friend username:', props.friend.username);
-  console.log('[FRIEND DEBUG] Friend status:', props.friend.status);
   
   // Используем friend_id если доступен, иначе используем id
   let friendId = props.friend.friend_id || props.friend.id;

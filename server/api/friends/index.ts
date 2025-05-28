@@ -52,14 +52,14 @@ async function handleGetFriends(event: any) {
       FROM friendship
       WHERE out = $userId
     `;
-    const outgoingFriendships: SurrealResult = await db.query(outgoingQuery, { userId });
+    const outgoingFriendships = await db.query(outgoingQuery, { userId }) as SurrealResult;
     
     const incomingQuery = `
       SELECT id, status, created_at, out AS friend_id, \`in\` AS recipient_id
       FROM friendship
       WHERE \`in\` = 'user:${extractCleanId(userId)}'
     `;
-    const incomingFriendships: SurrealResult = await db.query(incomingQuery);
+    const incomingFriendships = await db.query(incomingQuery) as SurrealResult;
     
     const outgoingFriendships_parsed = parseSurrealResult(outgoingFriendships);
     const incomingFriendships_parsed = parseSurrealResult(incomingFriendships);
@@ -71,11 +71,20 @@ async function handleGetFriends(event: any) {
     
     const friendUsersMap = await fetchFriendsUserData(db, friendIds);
     
-    const outgoingFriends = buildFriendsList(outgoingFriendships_parsed, friendUsersMap, 'sent');
-    const incomingFriends = buildFriendsList(incomingFriendships_parsed, friendUsersMap, 'received');
+    // Получаем последние сообщения для каждого друга
+    const friendsWithLastMessages = await Promise.all([
+      ...outgoingFriendships_parsed.map(async (friendship) => {
+        const friendData = await buildFriendWithLastMessage(friendship, friendUsersMap, 'sent', userId, db);
+        return friendData;
+      }),
+      ...incomingFriendships_parsed.map(async (friendship) => {
+        const friendData = await buildFriendWithLastMessage(friendship, friendUsersMap, 'received', userId, db);
+        return friendData;
+      })
+    ]);
 
     return {
-      friends: [...outgoingFriends, ...incomingFriends],
+      friends: friendsWithLastMessages.filter(Boolean),
     };
   } catch (error: any) {
     throw createError({
@@ -244,4 +253,72 @@ async function createFriendship(db: any, userId: string, friendId: string): Prom
   
   const parsed = parseSurrealResult(result);
   return parsed.length > 0 ? parsed[0] : null;
+}
+
+async function buildFriendWithLastMessage(
+  friendship: any,
+  usersMap: Record<string, any>,
+  requestType: 'sent' | 'received',
+  currentUserId: string,
+  db: any
+) {
+  const friendId = extractCleanId(friendship.friend_id);
+  const userData = usersMap[friendId] || usersMap[`user:${friendId}`] || {};
+  
+  // Находим чат между текущим пользователем и другом
+  const currentUserClean = extractCleanId(currentUserId);
+  const chatQuery = await db.query(`
+    SELECT * FROM chat 
+    WHERE chat_type = 'private' 
+      AND is_active = true
+      AND array::len(participants) = 2
+      AND (
+        (participants[0] = type::thing('user', $currentUserId) AND participants[1] = type::thing('user', $friendId)) OR
+        (participants[0] = type::thing('user', $friendId) AND participants[1] = type::thing('user', $currentUserId))
+      )
+  `, {
+    currentUserId: currentUserClean,
+    friendId: friendId
+  });
+  
+  const chats = parseSurrealResult(chatQuery);
+  let lastMessage = null;
+  
+  if (chats.length > 0) {
+    const chat = chats[0];
+    // Получаем последнее сообщение из этого чата
+    const lastMessageQuery = await db.query(`
+      SELECT 
+        content,
+        created_at,
+        sender_id,
+        (SELECT username FROM user WHERE id = $parent.sender_id)[0].username AS sender_username
+      FROM message 
+      WHERE chat_id = $chatId 
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `, { chatId: chat.id });
+    
+    const lastMessages = parseSurrealResult(lastMessageQuery);
+    if (lastMessages.length > 0) {
+      lastMessage = lastMessages[0];
+    }
+  }
+  
+  return {
+    id: friendship.id,
+    status: friendship.status,
+    friend_id: friendship.friend_id,
+    request_type: requestType,
+    created_at: friendship.created_at,
+    username: userData.username || null,
+    email: userData.email || null,
+    avatar: userData.avatar || null, // Добавляем аватарку
+    lastMessage: lastMessage ? {
+      content: lastMessage.content,
+      created_at: lastMessage.created_at,
+      sender_username: lastMessage.sender_username,
+      isFromCurrentUser: extractCleanId(lastMessage.sender_id) === currentUserClean
+    } : null
+  };
 }

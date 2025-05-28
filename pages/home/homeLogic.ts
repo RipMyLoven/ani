@@ -7,7 +7,13 @@ export interface Friend {
   avatar?: string;
   status: 'pending' | 'accepted' | 'online' | 'offline';
   requestType?: 'sent' | 'received';
-  lastMessage?: string;
+  friend_id?: string;
+  lastMessage?: {
+    content: string;
+    created_at: string;
+    sender_username: string;
+    isFromCurrentUser: boolean;
+  } | null;
 }
 
 interface FriendsResponse {
