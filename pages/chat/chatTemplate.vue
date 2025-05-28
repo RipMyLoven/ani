@@ -2,7 +2,7 @@
   <div class="chat-container">
     <div v-if="error" class="error-message">
       {{ error }}
-      <button @click="loadMessages" class="retry-btn">Retry</button>
+      <button @click="initChat" class="retry-btn">Retry</button>
     </div>
     <div v-else-if="isLoading" class="loading">
       Loading messages...
@@ -13,12 +13,12 @@
           No messages yet. Start the conversation!
         </div>
         <div v-else class="messages-list">
-<LeftMessageChat
-  v-for="message in messages"
-  :key="message.id"
-  :message="message"
-  :current-user-id="currentUserId"
-/>
+          <LeftMessageChat
+            v-for="message in messages"
+            :key="message.id"
+            :message="message"
+            :current-user-id="currentUserId"
+          />
         </div>
       </div>
     </div>
@@ -26,73 +26,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, computed } from 'vue'; // Add computed here
+import { ref, watch, nextTick, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import LeftMessageChat from './components/LeftMessageChat.vue';
-import type { Message } from '~/types/chat';
 import { useAuthStore } from '~/stores/auth';
+import { usePollingChat } from './chatLogic';
 
 const route = useRoute();
-const messages = ref<Message[]>([]);
-const isLoading = ref(false);
-const error = ref<string | null>(null);
 const messagesContainer = ref<HTMLElement>();
 const auth = useAuthStore();
+
 const currentUserId = computed(() =>
   auth.user ? auth.user.id.replace(/^user:/, '') : null
 );
 
-const chatId = computed(() => {
-  return route.query.chatId as string || route.query.participantId as string;
+const participantId = computed(() => route.query.participantId as string || null);
+
+// Use the shared chat logic
+const { messages, isLoading, error, initChat, stopPolling } = usePollingChat(participantId.value);
+
+// Initialize chat when component mounts
+onMounted(async () => {
+  if (participantId.value) {
+    console.log('[chatTemplate] Initializing chat for participant:', participantId.value);
+    await initChat();
+  }
 });
 
-// Функция загрузки сообщений
-const loadMessages = async () => {
-  if (!chatId.value) {
-    error.value = 'No chat ID provided';
-    return;
-  }
+// Stop polling when component unmounts
+onBeforeUnmount(() => {
+  stopPolling();
+});
 
-  try {
-    isLoading.value = true;
-    error.value = null;
-    
-    console.log('[chatTemplate] Loading messages for chatId:', chatId.value);
-    
-    const response = await $fetch<{ messages: Message[] }>(
-      `/api/chat/messages?chatId=${chatId.value.replace(/^chat:/, '')}`
-    );
-    
-    messages.value = response.messages || [];
-    console.log('[chatTemplate] Messages loaded:', messages.value.length);
-    
-    // Прокручиваем вниз после загрузки
-    nextTick(scrollToBottom);
-    
-  } catch (err: any) {
-    console.error('[chatTemplate] Error loading messages:', err);
-    error.value = 'Failed to load messages';
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-// Функция прокрутки вниз
+// Function to scroll to bottom
 const scrollToBottom = () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
   }
 };
 
-// Загружаем сообщения при монтировании
-onMounted(() => {
-  loadMessages();
-  
-  // Обновляем сообщения каждые 2 секунды
-  setInterval(loadMessages, 2000);
-});
-
-// Следим за изменениями сообщений и прокручиваем вниз
+// Watch for message changes and scroll to bottom
 watch(messages, (newMessages) => {
   console.log('[chatTemplate] Messages updated:', {
     count: newMessages.length,
@@ -101,6 +74,14 @@ watch(messages, (newMessages) => {
   });
   nextTick(scrollToBottom);
 }, { deep: true });
+
+// Watch for participant changes
+watch(participantId, async (newParticipantId) => {
+  if (newParticipantId) {
+    console.log('[chatTemplate] Participant changed, reinitializing chat:', newParticipantId);
+    await initChat();
+  }
+});
 </script>
 
 <style scoped>

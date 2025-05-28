@@ -1,12 +1,19 @@
 import { ref } from 'vue';
 import type { Chat, Message } from '~/types/chat';
 
+// Create a global state to share between all instances
+const globalChatState = {
+  chat: ref<Chat | null>(null),
+  messages: ref<Message[]>([]),
+  isLoading: ref(false),
+  error: ref<string | null>(null),
+  currentParticipantId: ref<string | null>(null),
+  pollingInterval: null as ReturnType<typeof setInterval> | null
+};
+
 export function usePollingChat(participantId: string | null) {
-  const chat = ref<Chat | null>(null);
-  const messages = ref<Message[]>([]);
-  const isLoading = ref(false);
-  const error = ref<string | null>(null);
-  let pollingInterval: ReturnType<typeof setInterval> | null = null;
+  // Use the global state
+  const { chat, messages, isLoading, error } = globalChatState;
 
   // 1. Создать или найти чат
   const ensureChat = async () => {
@@ -14,6 +21,13 @@ export function usePollingChat(participantId: string | null) {
       error.value = 'No participant selected';
       return;
     }
+    
+    // If we already have the right chat, don't recreate it
+    if (globalChatState.currentParticipantId.value === participantId && chat.value) {
+      console.log('[chatLogic] Using existing chat:', chat.value);
+      return;
+    }
+    
     try {
       isLoading.value = true;
       error.value = null;
@@ -23,6 +37,7 @@ export function usePollingChat(participantId: string | null) {
         credentials: 'include'
       });
       chat.value = response.chat;
+      globalChatState.currentParticipantId.value = participantId;
       console.log('[chatLogic] Chat ensured:', chat.value);
     } catch (err: any) {
       console.error('[chatLogic] Error ensuring chat:', err);
@@ -61,15 +76,21 @@ export function usePollingChat(participantId: string | null) {
   // 3. Polling
   const startPolling = () => {
     if (!chat.value) return;
+    
+    // Stop existing polling
+    if (globalChatState.pollingInterval) {
+      clearInterval(globalChatState.pollingInterval);
+    }
+    
     console.log('[chatLogic] Starting polling');
     fetchMessages();
-    pollingInterval = setInterval(fetchMessages, 2000);
+    globalChatState.pollingInterval = setInterval(fetchMessages, 2000);
   };
 
   const stopPolling = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
+    if (globalChatState.pollingInterval) {
+      clearInterval(globalChatState.pollingInterval);
+      globalChatState.pollingInterval = null;
       console.log('[chatLogic] Polling stopped');
     }
   };
