@@ -15,68 +15,88 @@ A modern web application built with Nuxt 3, featuring a complete authentication 
 - [pnpm](https://pnpm.io/) package manager
 - [SurrealDB](https://surrealdb.com/) (for database)
 
-## Getting Started
+## 🚀 Getting Started
 
-This project requires two terminal windows to run:
+Follow these steps to set up and run the project on your local machine.
 
-### First Terminal - Database Server
+---
 
-Start the SurrealDB database:
+### 🖥️ Step 1: Launch the Virtual Machine
 
-```bash
-surreal start --user admin --pass admin --bind 0.0.0.0:8000 rocksdb://server/db/data/
-```
+Make sure you are working inside your virtual machine or development environment.
 
-### Second Terminal - Nuxt Development Server
+---
 
-Start the Nuxt development server:
+### 🔧 Step 2: Make the Setup Script Executable
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
+chmod +x ./setup.sh
 ```
 
-## Production
+---
 
-Build the application for production:
+### ▶️ Step 3: Run the Setup Script
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+./setup.sh
 ```
 
-Locally preview production build:
+---
+
+### 🔄 Step 4: Reload the Shell Configuration
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
+source .bashrc
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+---
+
+### 🛠️ Step 5: Create the Environment File
+
+Create a `.env` file in the root of the project:
+
+```bash
+touch .env
+```
+
+Then add the following line (replace `<cloud>` with your SurrealDB cloud URL):
+
+```env
+SURREAL_URL=<cloud>
+```
+
+---
+
+### 📦 Step 6: Install Dependencies
+
+Install the project dependencies using `pnpm`:
+
+```bash
+pnpm install
+```
+
+---
+
+### 🧪 Step 7: Start the Development Server
+
+Run the development server:
+
+```bash
+pnpm run dev
+```
+
+---
+
+### 🌐 Open in Browser
+
+Once the server is running, open:
+
+```
+http://localhost:3000
+```
+
+---
+
+## ✅ You're Ready!
+
+Your development environment is now set up. You're ready to start building and exploring the messenger app!
